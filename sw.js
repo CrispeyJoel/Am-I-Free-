@@ -1,4 +1,4 @@
-const CACHE = "actually-free-v1";
+const CACHE = "actually-free-v2";
 const ASSETS = [
   "./",
   "./index.html",
