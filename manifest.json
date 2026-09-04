@@ -1,0 +1,15 @@
+{
+  "name": "Actually Free",
+  "short_name": "Actually Free",
+  "description": "A week-first scheduler that shows what you're actually free for, with travel buffers built in.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F5F6F3",
+  "theme_color": "#22333B",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
