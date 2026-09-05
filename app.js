@@ -720,17 +720,30 @@ function signOutCloud() { signOut(auth); }
 
 async function enableNotifications() {
   try {
-    if (!("Notification" in window)) return;
+    if (!("Notification" in window)) {
+      console.warn("Notifications not supported in this browser.");
+      return;
+    }
+
     const supported = await messagingSupported();
-    if (!supported) return;
+    if (!supported) {
+      console.warn("Messaging not supported in this browser environment.");
+      return;
+    }
 
     let perm = Notification.permission;
     if (perm === "default") {
       perm = await Notification.requestPermission();
     }
-    if (perm !== "granted") return;
+    if (perm !== "granted") {
+      console.warn("Notification permission was denied or dismissed.");
+      return;
+    }
 
-    const reg = await navigator.serviceWorker.ready;
+    // Explicitly register sw.js directly instead of waiting on page load events
+    const reg = await navigator.serviceWorker.register("./sw.js");
+    await navigator.serviceWorker.ready;
+
     const messaging = getMessaging(fbApp);
     const token = await getToken(messaging, { 
       vapidKey: VAPID_PUBLIC_KEY, 
@@ -742,9 +755,10 @@ async function enableNotifications() {
         pushToken: token,
         updatedAt: Date.now()
       }, { merge: true });
+      console.log("Push token automatically generated and saved to Firestore:", token);
     }
   } catch (e) {
-    console.error("Push setup failed:", e);
+    console.error("Push setup failed with error:", e);
   }
 }
 
