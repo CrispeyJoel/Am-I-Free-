@@ -588,7 +588,7 @@ function openSheet(ev, isNew=false) {
         <div class="field">
           <label>Buffer before</label>
           <select id="f-bufbefore">
-            ${[0,10,20,30,40,50,60,70,80,90,100,110,120].map(m => `
+            ${[0,10,20,30].map(m => `
               <option value="${m}" ${Number(draft.bufferBefore) === m ? "selected" : ""}>
                 ${m < 60 ? `${m} minutes` : `${Math.floor(m/60)} hour${m >= 120 ? "s" : ""}${m % 60 ? ` ${m % 60} minutes` : ""}`}
               </option>
@@ -599,7 +599,7 @@ function openSheet(ev, isNew=false) {
         <div class="field">
           <label>Buffer after</label>
           <select id="f-bufafter">
-            ${[0,10,20,30,40,50,60,70,80,90,100,110,120].map(m => `
+            ${[0,10,20,30].map(m => `
               <option value="${m}" ${Number(draft.bufferAfter) === m ? "selected" : ""}>
                 ${m < 60 ? `${m} minutes` : `${Math.floor(m/60)} hour${m >= 120 ? "s" : ""}${m % 60 ? ` ${m % 60} minutes` : ""}`}
               </option>

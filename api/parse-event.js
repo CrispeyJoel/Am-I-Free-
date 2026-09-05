@@ -13,7 +13,10 @@ const DEFAULT_CATEGORIES = [
 const RESPONSE_SCHEMA = {
   type: "object",
   properties: {
-    title: { type: "string" },
+    title: {
+      type: "string",
+      description: "A short, clean, human-readable event name — just the activity/person, e.g. 'Piano lesson with Zach', 'Team meeting', 'Dentist appointment'. NEVER include times, dates, day names, or filler/connector words like 'schedule', 'at', 'for', 'on', 'o'clock'."
+    },
     date: { type: "string", description: "YYYY-MM-DD" },
     time: { type: "string", description: "24-hour HH:MM, best guess if not stated" },
     duration: { type: "integer", description: "minutes" },
@@ -56,6 +59,15 @@ Default duration is 60 minutes unless stated.
 Default travel buffer is 30 minutes before and 30 minutes after, unless the sentence specifies a different amount or says something like "no buffer" (then use 0).
 Default "mandatory" to true unless the sentence implies it's optional or flexible (e.g. "if I have time", "maybe").
 Default "reminder" to "30m" unless the sentence names a different lead time.
+
+The "title" must be a clean, short event name only — the activity or who it's with. Strip out everything else: no "schedule", "at", "for", "on", "o'clock", times, dates, or day names. If the input is messy voice-transcription filler, extract just the core activity.
+
+Examples:
+- "Schedule work for four o'clock" → title: "Work"
+- "Piano lesson with Zach next Tuesday at 4pm" → title: "Piano lesson with Zach"
+- "Remind me to pick up dry cleaning tomorrow at 5" → title: "Pick up dry cleaning"
+- "Dentist appointment Friday 9am no buffer" → title: "Dentist appointment"
+
 Sentence: "${text.trim()}"`;
 
   try {
