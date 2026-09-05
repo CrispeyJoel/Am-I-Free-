@@ -1,8 +1,6 @@
 const admin = require("firebase-admin");
 const { DateTime } = require("luxon");
 
-// ---------- Firebase ----------
-
 if (!admin.apps.length) {
   const serviceAccount = JSON.parse(
     process.env.FIREBASE_SERVICE_ACCOUNT
@@ -14,8 +12,6 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
-
-// ---------- Recurrence ----------
 
 function occursOn(ev, dateStr) {
   const anchor = DateTime.fromISO(ev.dateISO, {
@@ -30,9 +26,7 @@ function occursOn(ev, dateStr) {
     target.diff(anchor, "days").days
   );
 
-  if (diff < 0) {
-    return false;
-  }
+  if (diff < 0) return false;
 
   if (ev.recurrence === "weekly") {
     return diff % 7 === 0;
@@ -45,29 +39,39 @@ function occursOn(ev, dateStr) {
   return diff === 0;
 }
 
-// ---------- Reminder calculation ----------
-
-function reminderDateTime(
-  event,
-  occurrenceDateStr,
-  timezone
-) {
-  // Event start
+function getEventTimes(ev, occurrenceDateStr, timezone) {
   const eventLocal = DateTime
     .fromISO(occurrenceDateStr, {
       zone: timezone
     })
     .plus({
-      minutes: Number(event.start) || 0
+      minutes: Number(ev.start) || 0
     });
 
-  // Leaving time
   const leaveLocal = eventLocal.minus({
-    minutes: Number(event.bufferBefore) || 0
+    minutes: Number(ev.bufferBefore) || 0
   });
 
-  // Old events without a reminder default to 30 minutes
-  const reminder = event.reminder || "30m";
+  return {
+    eventLocal,
+    leaveLocal
+  };
+}
+
+function reminderDateTime(
+  ev,
+  occurrenceDateStr,
+  timezone
+) {
+  const {
+    leaveLocal
+  } = getEventTimes(
+    ev,
+    occurrenceDateStr,
+    timezone
+  );
+
+  const reminder = ev.reminder || "30m";
 
   switch (reminder) {
     case "30m":
@@ -115,12 +119,8 @@ function reminderDateTime(
   }
 }
 
-// ---------- Cron ----------
-
 module.exports = async (req, res) => {
   try {
-    // ---------- Security ----------
-
     if (
       req.query.secret !==
       process.env.CRON_SECRET
@@ -131,8 +131,6 @@ module.exports = async (req, res) => {
       });
     }
 
-    // ---------- Current time ----------
-
     const nowUtc = DateTime.utc();
 
     let sent = 0;
@@ -140,48 +138,32 @@ module.exports = async (req, res) => {
     let skipped = 0;
     let failed = 0;
 
-    // ---------- Get users ----------
-
     const usersSnap = await db
       .collection("users")
       .get();
 
     console.log(
-      `Checking ${usersSnap.size} users`
+      "CRON START",
+      nowUtc.toISO()
     );
 
-    // ---------- Check each user ----------
+    console.log(
+      "Users found:",
+      usersSnap.size
+    );
 
     for (const userDoc of usersSnap.docs) {
       const user = userDoc.data();
 
-      if (!user.pushToken) {
-        console.log(
-          "Skipping user with no push token:",
-          userDoc.id
-        );
+      if (
+        !user.pushToken ||
+        !user.timezone
+      ) {
         continue;
       }
 
-      if (!user.timezone) {
-        console.log(
-          "Skipping user with no timezone:",
-          userDoc.id
-        );
-        continue;
-      }
-
-      const localNow = nowUtc.setZone(
-        user.timezone
-      );
-
-      console.log("User:", {
-        id: userDoc.id,
-        timezone: user.timezone,
-        localNow: localNow.toISO()
-      });
-
-      // ---------- Get events ----------
+      const localNow =
+        nowUtc.setZone(user.timezone);
 
       const dataDoc = await db
         .collection("users")
@@ -191,48 +173,27 @@ module.exports = async (req, res) => {
         .get();
 
       if (!dataDoc.exists) {
-        console.log(
-          "No events document for:",
-          userDoc.id
-        );
         continue;
       }
 
       const events =
         dataDoc.data().list || [];
 
-      console.log(
-        `Found ${events.length} events for ${userDoc.id}`
-      );
+      const firstDate =
+        localNow
+          .startOf("day")
+          .minus({ days: 1 });
 
-      // ---------- Date range ----------
-
-      // We check from yesterday through 35 days ahead
-      // because reminders can happen before an event.
-
-      const firstDate = localNow
-        .startOf("day")
-        .minus({
-          days: 1
-        });
-
-      const lastDate = localNow
-        .startOf("day")
-        .plus({
-          days: 35
-        });
-
-      // ---------- Check events ----------
+      const lastDate =
+        localNow
+          .startOf("day")
+          .plus({ days: 35 });
 
       for (const ev of events) {
         if (
           !ev.dateISO ||
           ev.start == null
         ) {
-          console.log(
-            "Skipping malformed event:",
-            ev
-          );
           continue;
         }
 
@@ -242,7 +203,6 @@ module.exports = async (req, res) => {
           const occurrenceDateStr =
             cursor.toISODate();
 
-          // Is the event occurring on this date?
           if (
             !occursOn(
               ev,
@@ -258,31 +218,14 @@ module.exports = async (req, res) => {
 
           checked++;
 
-          // ---------- Calculate event time ----------
-
-          const eventLocal = DateTime
-            .fromISO(
-              occurrenceDateStr,
-              {
-                zone: user.timezone
-              }
-            )
-            .plus({
-              minutes:
-                Number(ev.start) || 0
-            });
-
-          // ---------- Calculate leaving time ----------
-
-          const leaveLocal =
-            eventLocal.minus({
-              minutes:
-                Number(
-                  ev.bufferBefore
-                ) || 0
-            });
-
-          // ---------- Calculate reminder time ----------
+          const {
+            eventLocal,
+            leaveLocal
+          } = getEventTimes(
+            ev,
+            occurrenceDateStr,
+            user.timezone
+          );
 
           const notifyLocal =
             reminderDateTime(
@@ -291,13 +234,7 @@ module.exports = async (req, res) => {
               user.timezone
             );
 
-          // No reminder
           if (!notifyLocal) {
-            console.log(
-              "No reminder:",
-              ev.title
-            );
-
             cursor = cursor.plus({
               days: 1
             });
@@ -305,50 +242,58 @@ module.exports = async (req, res) => {
             continue;
           }
 
-          // ---------- Calculate difference ----------
-
           const diffMin =
             notifyLocal.diff(
               localNow,
               "minutes"
             ).minutes;
 
-          // ---------- Diagnostic logging ----------
-
-          console.log(
-            "REMINDER CHECK",
-            {
-              user: userDoc.id,
-              event: ev.title,
-              eventId: ev.id,
-              occurrence:
-                occurrenceDateStr,
-              reminder:
-                ev.reminder || "30m",
-              now:
-                localNow.toISO(),
-              eventStart:
-                eventLocal.toISO(),
-              leaveAt:
-                leaveLocal.toISO(),
-              notifyAt:
-                notifyLocal.toISO(),
-              diffMin:
-                Number(
-                  diffMin.toFixed(2)
-                )
-            }
-          );
-
-          // ---------- Is reminder due? ----------
-
-          // Send if reminder time is now
-          // or happened within the last 5 minutes.
-
+          /*
+           * Only print events where the reminder
+           * is within 2 hours of the current time.
+           *
+           * This prevents Vercel logs becoming huge.
+           */
           if (
-            diffMin > 0 ||
-            diffMin < -5
+            Math.abs(diffMin) <= 120
           ) {
+            console.log(
+              "NEAR REMINDER",
+              {
+                event: ev.title,
+                eventId: ev.id,
+                occurrence:
+                  occurrenceDateStr,
+                reminder:
+                  ev.reminder || "30m",
+                now:
+                  localNow.toFormat(
+                    "yyyy-MM-dd HH:mm:ss"
+                  ),
+                eventStart:
+                  eventLocal.toFormat(
+                    "yyyy-MM-dd HH:mm:ss"
+                  ),
+                leaveAt:
+                  leaveLocal.toFormat(
+                    "yyyy-MM-dd HH:mm:ss"
+                  ),
+                notifyAt:
+                  notifyLocal.toFormat(
+                    "yyyy-MM-dd HH:mm:ss"
+                  ),
+                diffMin:
+                  Number(
+                    diffMin.toFixed(2)
+                  )
+              }
+            );
+          }
+
+          /*
+           * Reminder is not due yet.
+           */
+          if (diffMin > 0) {
             skipped++;
 
             cursor = cursor.plus({
@@ -358,7 +303,32 @@ module.exports = async (req, res) => {
             continue;
           }
 
-          // ---------- Prevent duplicate notifications ----------
+          /*
+           * Reminder happened more than 5 minutes ago.
+           */
+          if (diffMin < -5) {
+            skipped++;
+
+            cursor = cursor.plus({
+              days: 1
+            });
+
+            continue;
+          }
+
+          /*
+           * Reminder is due.
+           */
+
+          console.log(
+            "REMINDER DUE",
+            {
+              event: ev.title,
+              occurrence:
+                occurrenceDateStr,
+              diffMin
+            }
+          );
 
           const key =
             `${ev.id}_${occurrenceDateStr}`;
@@ -374,7 +344,7 @@ module.exports = async (req, res) => {
 
           if (already.exists) {
             console.log(
-              "Already notified:",
+              "ALREADY NOTIFIED",
               key
             );
 
@@ -385,19 +355,10 @@ module.exports = async (req, res) => {
             continue;
           }
 
-          // ---------- Send notification ----------
-
           try {
             console.log(
-              "SENDING PUSH:",
-              {
-                user: userDoc.id,
-                event: ev.title,
-                token:
-                  user.pushToken
-                    ? "present"
-                    : "missing"
-              }
+              "SENDING PUSH",
+              ev.title
             );
 
             await admin
@@ -438,9 +399,6 @@ module.exports = async (req, res) => {
                 }
               });
 
-            // Only mark as notified AFTER
-            // Firebase successfully accepts the message.
-
             await notifiedRef.set({
               sentAt:
                 nowUtc.toISO(),
@@ -452,7 +410,7 @@ module.exports = async (req, res) => {
             sent++;
 
             console.log(
-              "PUSH SENT SUCCESSFULLY:",
+              "PUSH SENT",
               ev.title
             );
 
@@ -460,21 +418,13 @@ module.exports = async (req, res) => {
             failed++;
 
             console.error(
-              "PUSH SEND FAILED:",
+              "PUSH FAILED",
               {
-                user:
-                  userDoc.id,
-                event:
-                  ev.title,
-                error:
-                  err.message,
-                code:
-                  err.code
+                event: ev.title,
+                code: err.code,
+                message: err.message
               }
             );
-
-            // Do NOT create notifiedRef.
-            // The next cron run can retry.
           }
 
           cursor = cursor.plus({
@@ -483,8 +433,6 @@ module.exports = async (req, res) => {
         }
       }
     }
-
-    // ---------- Response ----------
 
     console.log(
       "CRON COMPLETE",
@@ -506,14 +454,13 @@ module.exports = async (req, res) => {
 
   } catch (err) {
     console.error(
-      "NOTIFICATION CRON FAILED:",
+      "CRON ERROR",
       err
     );
 
     return res.status(500).json({
       ok: false,
-      error:
-        err.message
+      error: err.message
     });
   }
 };
