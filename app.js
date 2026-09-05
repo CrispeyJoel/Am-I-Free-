@@ -240,7 +240,7 @@ function renderTopbar() {
     <button class="iconbtn" data-act="next">›</button>
   </div>
   <div class="topbar" style="padding-top:0">
-    <button class="iconbtn" data-act="today" title="Back to today">•</button>
+    <button class="iconbtn" data-act="today" title="Back to today">Today</button>
     <div class="viewtoggle">
       <button data-view="day" class="${view==="day"?"active":""}">Week</button>
       <button data-view="month" class="${view==="month"?"active":""}">Month</button>
