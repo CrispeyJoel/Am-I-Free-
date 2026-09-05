@@ -3,7 +3,7 @@
    This file must be loaded as a <script type="module"> for the imports below to work. */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult,
+  getAuth, GoogleAuthProvider, signInWithPopup,
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
@@ -747,8 +747,11 @@ if ("serviceWorker" in navigator) {
 }
 
 function signInCloud() {
-  sessionStorage.setItem("af_awaiting_redirect", "1");
-  signInWithRedirect(auth, new GoogleAuthProvider());
+  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+    alert("Cloud sign-in doesn't work from the home-screen app on iPhone (a Safari limitation). Please open this site in regular Safari once, sign in there, then reopen the app — it'll pick up the same sign-in automatically.");
+    return;
+  }
+  signInWithPopup(auth, new GoogleAuthProvider()).catch(err => alert("Sign-in failed: " + err.message));
 }
 function signOutCloud() { signOut(auth); }
 
