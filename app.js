@@ -197,7 +197,9 @@ function parseQuickAdd(text) {
     dateISO: iso(date),
     start: time===null ? roundToNext30() : time,
     duration: 60,
-    bufferBefore: 30, bufferAfter: 30,
+    bufferBefore: 30,
+    bufferAfter: 30,
+    reminder: "30m",
     mandatory: true,
     earnsMoney: !!cat.earnsDefault,
     recurrence: "none"
@@ -431,7 +433,12 @@ function openSheet(ev, isNew=false) {
   const draft = isEdit ? ev : (ev || {
     id: uid(), seriesId: uid(), title:"", categoryId: categories[0].id,
     dateISO: iso(selectedDate), start: roundToNext30(), duration:60,
-    bufferBefore:30, bufferAfter:30, mandatory:true, earnsMoney:false, recurrence:"none"
+    bufferBefore:30,
+    bufferAfter:30,
+    reminder:"30m",
+    mandatory:true,
+    earnsMoney:false,
+    recurrence:"none"
   });
 
   const overlay = document.createElement("div");
@@ -453,6 +460,19 @@ function openSheet(ev, isNew=false) {
       <div class="row2">
         <div class="field"><label>Buffer before (min)</label><input type="number" id="f-bufbefore" value="${draft.bufferBefore}" min="0" step="5" /></div>
         <div class="field"><label>Buffer after (min)</label><input type="number" id="f-bufafter" value="${draft.bufferAfter}" min="0" step="5" /></div>
+      </div>
+      <div class="field">
+        <label>Remind me</label>
+        <select id="f-reminder">
+          <option value="none" ${draft.reminder === "none" ? "selected" : ""}>No reminder</option>
+          <option value="30m" ${(!draft.reminder || draft.reminder === "30m") ? "selected" : ""}>30 minutes before leaving</option>
+          <option value="1h" ${draft.reminder === "1h" ? "selected" : ""}>1 hour before leaving</option>
+          <option value="6h" ${draft.reminder === "6h" ? "selected" : ""}>6 hours before leaving</option>
+          <option value="12h" ${draft.reminder === "12h" ? "selected" : ""}>12 hours before leaving</option>
+          <option value="1d" ${draft.reminder === "1d" ? "selected" : ""}>1 day before leaving</option>
+          <option value="1w" ${draft.reminder === "1w" ? "selected" : ""}>1 week before leaving</option>
+          <option value="1mo" ${draft.reminder === "1mo" ? "selected" : ""}>1 month before leaving</option>
+        </select>
       </div>
       <div class="field"><label>Repeats</label>
         <select id="f-recur">
@@ -515,6 +535,7 @@ function openSheet(ev, isNew=false) {
       bufferBefore: parseInt(overlay.querySelector("#f-bufbefore").value,10) || 0,
       bufferAfter: parseInt(overlay.querySelector("#f-bufafter").value,10) || 0,
       recurrence: overlay.querySelector("#f-recur").value,
+      reminder: overlay.querySelector("#f-reminder").value,
       mandatory: overlay.querySelector("#f-mandatory").checked,
       earnsMoney: overlay.querySelector("#f-money").checked
     };
@@ -555,7 +576,10 @@ async function enableNotifications() {
     if (token && currentUser) {
       await setDoc(doc(db, "users", currentUser.uid), { pushToken: token }, { merge: true });
     }
-  } catch (e) { console.warn("Push setup skipped:", e.message); }
+  } catch (e) {
+  console.error("Push setup failed:", e);
+  alert("Push setup failed: " + e.message);
+}
 }
 
 onAuthStateChanged(auth, (user) => {
