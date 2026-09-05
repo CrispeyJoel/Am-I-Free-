@@ -142,7 +142,7 @@ function freeStatusNow() {
   const mins = next.start - nowMin;
   const hrs = Math.floor(mins/60), rem = mins%60;
   const dur = hrs>0 ? `${hrs}h ${rem}m` : `${rem}m`;
-  return { busy:false, text:`Free for <b>${dur}</b> — next at ${minToLabel(next.start)}` };
+  return { busy:false, text:`Free for <b>${dur}</b> - next at ${minToLabel(next.start)}` };
 }
 
 /* ---------- Quick add parsing ---------- */
