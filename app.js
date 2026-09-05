@@ -276,8 +276,6 @@ function renderTopbar() {
     ? monthCursor.toLocaleDateString(undefined, { month: "long", year: "numeric" }) 
     : `${weekStart.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${addDays(weekStart, 6).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
 
-  const pushActive = ("Notification" in window) && Notification.permission === "granted";
-
   return `
     <div class="topbar">
       <button class="iconbtn" data-act="prev">‹</button>
@@ -286,19 +284,29 @@ function renderTopbar() {
       </div>
       <button class="iconbtn" data-act="next">›</button>
     </div>
-    <div class="topbar" style="padding-top:0">
-      <button class="todaybtn" data-act="today" title="Back to today"> Today </button>
-      <div class="viewtoggle">
-        <button data-view="day" class="${view === "day" ? "active" : ""}"> Week </button>
-        <button data-view="month" class="${view === "month" ? "active" : ""}"> Month </button>
-      </div>
-      <button class="pushbtn ${pushActive ? "active" : ""}" data-act="toggle-push" title="Toggle push notifications">
-        ${pushActive ? "🔔 Push On" : "🔕 Push Off"}
+
+    <!-- Row 1: Today, Discrete Push Button, Sign In -->
+    <div class="topbar-actions">
+      <button class="todaybtn" data-act="today" title="Back to today">Today</button>
+      
+      <button class="pushbtn-slim ${pushEnabled ? "active" : ""}" data-act="toggle-push" title="Toggle push notifications">
+        <span class="dot"></span>
+        <span>${pushEnabled ? "Push On" : "Push Off"}</span>
       </button>
+
       <button class="signinbtn" data-act="cloud" title="Cloud sync">
         ${currentUser ? "Signed in" : "Sign in"}
       </button>
     </div>
+
+    <!-- Row 2: Week / Month View Switcher -->
+    <div class="topbar-view">
+      <div class="viewtoggle">
+        <button data-view="day" class="${view === "day" ? "active" : ""}">Week</button>
+        <button data-view="month" class="${view === "month" ? "active" : ""}">Month</button>
+      </div>
+    </div>
+
     <div id="cloudstatus" class="cloudstatus">
       ${currentUser ? `Synced as ${currentUser.displayName || currentUser.email}` : "Sign in to back up your calendar + enable notifications"}
     </div>
@@ -528,7 +536,7 @@ function attachHandlers() {
       if (act === "today") { weekStart = startOfWeek(new Date()); selectedDate = startOfDay(new Date()); monthCursor = startOfMonth(new Date()); render(); }
       if (act === "prev") { view === "month" ? shiftMonth(-1) : shiftWeek(-1); }
       if (act === "next") { view === "month" ? shiftMonth(1) : shiftWeek(1); }
-      if (act === "toggle-push") { enableNotifications(); } // <--- ADD THIS LINE
+      if (act === "toggle-push") { toggleNotifications(); }// <--- ADD THIS LINE
       if (act === "cloud") {
         if (!currentUser) signInCloud();
         else if (confirm(`Synced as ${currentUser.displayName||currentUser.email}. Sign out of cloud backup?`)) signOutCloud();
@@ -751,12 +759,40 @@ function signInCloud() {
 }
 function signOutCloud() { signOut(auth); }
 
+let pushEnabled = false;
+
+async function toggleNotifications() {
+  if (!currentUser) {
+    alert("Please sign in first to manage push notifications.");
+    return;
+  }
+
+  // TURN OFF: If currently enabled, clear token from Firestore
+  if (pushEnabled) {
+    try {
+      await setDoc(doc(db, "users", currentUser.uid), { 
+        pushToken: null,
+        updatedAt: Date.now()
+      }, { merge: true });
+
+      const messaging = getMessaging(fbApp);
+      await deleteToken(messaging).catch(() => {});
+
+      pushEnabled = false;
+      render();
+    } catch (e) {
+      console.error("Failed to disable notifications:", e);
+    }
+    return;
+  }
+
+  // TURN ON: Enable notifications
+  await enableNotifications();
+}
+
 async function enableNotifications() {
   try {
-    if (!("Notification" in window)) {
-      alert("Notifications are not supported by your browser.");
-      return;
-    }
+    if (!("Notification" in window)) return;
 
     let perm = Notification.permission;
     if (perm !== "granted") {
@@ -764,7 +800,8 @@ async function enableNotifications() {
     }
 
     if (perm !== "granted") {
-      alert("Notification permissions were denied. Please enable them in your browser settings.");
+      alert("Notification permission was denied in browser settings.");
+      pushEnabled = false;
       render();
       return;
     }
@@ -784,10 +821,9 @@ async function enableNotifications() {
         updatedAt: Date.now()
       }, { merge: true });
       
-      console.log("Push token generated:", token);
+      pushEnabled = true;
     }
 
-    // Refresh topbar button state
     render();
   } catch (e) {
     console.error("Push setup failed:", e);
@@ -802,16 +838,13 @@ onAuthStateChanged(auth, (user) => {
       updatedAt: Date.now()
     }, { merge: true });
 
-    onSnapshot(doc(db, "users", user.uid, "data", "events"), (snap) => {
-      if (snap.exists()) {
-        const remote = snap.data();
-        suppressNextCloudPush = true;
-        if (remote.list) events = remote.list;
-        if (remote.categories) categories = remote.categories;
-        localStorage.setItem("af_events", JSON.stringify(events));
-        localStorage.setItem("af_categories", JSON.stringify(categories));
-        render();
+    onSnapshot(doc(db, "users", user.uid), (snap) => {
+      if (snap.exists() && snap.data().pushToken) {
+        pushEnabled = true;
+      } else {
+        pushEnabled = false;
       }
+      render();
     });
 
     enableNotifications();
