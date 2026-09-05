@@ -1,19 +1,32 @@
-/* ---------- Cloud sync + push (Firebase) ----------
-   Fill these in from your Firebase project (see README "Cloud sync setup").
-   This file must be loaded as a <script type="module"> for the imports below to work. */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+
 import {
-  getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink,
-  onAuthStateChanged, signOut, setPersistence, browserLocalPersistence
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut,
+  setPersistence,
+  browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
 import {
-  getFirestore, doc, setDoc, onSnapshot
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
 import {
-  getMessaging, getToken, deleteToken, isSupported as messagingSupported
+  getMessaging,
+  getToken,
+  deleteToken,
+  isSupported as messagingSupported
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging.js";
 
-// ====== FILL THIS IN — Firebase console → Project settings → General → your web app config ======
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyD9GasWarxCefArgzbq2vPgSuYmlkTvPs0",
   authDomain: "amifree-6e5e1.firebaseapp.com",
@@ -22,14 +35,22 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "592230919079",
   appId: "1:592230919079:web:b01ed6ee1804bf59656482"
 };
-// Firebase console → Project settings → Cloud Messaging → Web Push certificates → generate, then paste the key pair's public key here
-const VAPID_PUBLIC_KEY = "BFXiYQnuOx5YnxnSs_6hbwYScOzo0V8brVdsOAzGNOVBhWh_9XfPn62P5E2ga0RK7ANeeanCZoSZsuLq1ZQjuG8";
-// ===================================================================================================
+
+const VAPID_PUBLIC_KEY =
+  "BFXiYQnuOx5YnxnSs_6hbwYScOzo0V8brVdsOAzGNOVBhWh_9XfPn62P5E2ga0RK7ANeeanCZoSZsuLq1ZQjuG8";
 
 const fbApp = initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(fbApp);
-setPersistence(auth, browserLocalPersistence).catch(err => {
-  console.error("Firebase auth persistence setup failed:", err);
+const db = getFirestore(fbApp);
+
+let currentUser = null;
+let suppressNextCloudPush = false;
+let pushEnabled = false;
+let unsubscribeCloudData = null;
+let unsubscribeUserDoc = null;
+
+setPersistence(auth, browserLocalPersistence).catch(error => {
+  console.error("Firebase persistence failed:", error);
 });
 const db = getFirestore(fbApp);
 let currentUser = null;
@@ -816,24 +837,226 @@ async function registerServiceWorker() {
 window.addEventListener("load", registerServiceWorker);
 
 async function signInCloud() {
-  const savedEmail = localStorage.getItem("af_email_for_signin") || "";
-  const email = prompt("Enter your email:", savedEmail);
-  if (!email) return;
+  const existing = document.getElementById("authOverlay");
+  if (existing) existing.remove();
 
-  const cleanEmail = email.trim().toLowerCase();
-  localStorage.setItem("af_email_for_signin", cleanEmail);
+  const overlay = document.createElement("div");
+  overlay.id = "authOverlay";
+  overlay.className = "overlay";
 
-  try {
-    await sendSignInLinkToEmail(auth, cleanEmail, {
-      url: window.location.origin + window.location.pathname,
-      handleCodeInApp: true
-    });
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h2>Cloud account</h2>
 
-    alert("Sign-in link sent. Open the email on this device and tap the link.");
-  } catch (error) {
-    console.error("Email sign-in failed:", error);
-    alert("Couldn't send the sign-in email: " + error.message);
-  }
+      <div class="field">
+        <label>Email</label>
+        <input
+          id="authEmail"
+          type="email"
+          autocomplete="email"
+          placeholder="you@example.com"
+        />
+      </div>
+
+      <div class="field">
+        <label>Password</label>
+        <input
+          id="authPassword"
+          type="password"
+          autocomplete="current-password"
+          placeholder="Password"
+        />
+      </div>
+
+      <div
+        id="authError"
+        style="
+          display:none;
+          margin:10px 0;
+          padding:10px;
+          border-radius:8px;
+          background:#fff0ef;
+          color:#b42318;
+          font-size:13px;
+        "
+      ></div>
+
+      <div class="sheetactions">
+        <button class="btn ghost" id="authCancel">
+          Cancel
+        </button>
+
+        <button class="btn ghost" id="authGoogle">
+          Google
+        </button>
+
+        <button class="btn primary" id="authLogin">
+          Sign in
+        </button>
+      </div>
+
+      <button
+        id="authCreate"
+        style="
+          width:100%;
+          margin-top:12px;
+          border:0;
+          background:none;
+          font-size:13px;
+          text-decoration:underline;
+          cursor:pointer;
+        "
+      >
+        Create an account
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const emailInput = overlay.querySelector("#authEmail");
+  const passwordInput = overlay.querySelector("#authPassword");
+  const errorBox = overlay.querySelector("#authError");
+
+  const showError = message => {
+    errorBox.textContent = message;
+    errorBox.style.display = "block";
+  };
+
+  const hideError = () => {
+    errorBox.textContent = "";
+    errorBox.style.display = "none";
+  };
+
+  overlay.querySelector("#authCancel").addEventListener("click", () => {
+    overlay.remove();
+  });
+
+  overlay.addEventListener("click", event => {
+    if (event.target === overlay) {
+      overlay.remove();
+    }
+  });
+
+  overlay.querySelector("#authLogin").addEventListener("click", async () => {
+    hideError();
+
+    const email = emailInput.value.trim().toLowerCase();
+    const password = passwordInput.value;
+
+    if (!email) {
+      showError("Enter your email address.");
+      return;
+    }
+
+    if (!password) {
+      showError("Enter your password.");
+      return;
+    }
+
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+
+      await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      overlay.remove();
+    } catch (error) {
+      console.error("Email sign-in failed:", error);
+
+      const messages = {
+        "auth/invalid-credential":
+          "The email or password is incorrect.",
+        "auth/user-not-found":
+          "No account exists with this email.",
+        "auth/wrong-password":
+          "The password is incorrect.",
+        "auth/invalid-email":
+          "Enter a valid email address.",
+        "auth/too-many-requests":
+          "Too many attempts. Try again later."
+      };
+
+      showError(
+        messages[error.code] ||
+        error.message ||
+        "Sign-in failed."
+      );
+    }
+  });
+
+  overlay.querySelector("#authCreate").addEventListener("click", async () => {
+    hideError();
+
+    const email = emailInput.value.trim().toLowerCase();
+    const password = passwordInput.value;
+
+    if (!email) {
+      showError("Enter your email address.");
+      return;
+    }
+
+    if (password.length < 6) {
+      showError("Password must contain at least 6 characters.");
+      return;
+    }
+
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+
+      await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      overlay.remove();
+    } catch (error) {
+      console.error("Account creation failed:", error);
+
+      const messages = {
+        "auth/email-already-in-use":
+          "An account already exists with this email. Try signing in instead.",
+        "auth/invalid-email":
+          "Enter a valid email address.",
+        "auth/weak-password":
+          "Password must contain at least 6 characters."
+      };
+
+      showError(
+        messages[error.code] ||
+        error.message ||
+        "Could not create account."
+      );
+    }
+  });
+
+  overlay.querySelector("#authGoogle").addEventListener("click", async () => {
+    hideError();
+
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+
+      const provider = new GoogleAuthProvider();
+
+      await signInWithPopup(auth, provider);
+
+      overlay.remove();
+    } catch (error) {
+      console.error("Google sign-in failed:", error);
+
+      if (error.code === "auth/popup-blocked") {
+        showError("The sign-in window was blocked. Try again.");
+      } else if (error.code === "auth/popup-closed-by-user") {
+        showError("Google sign-in was cancelled.");
+      } else {
+        showError(error.message || "Google sign-in failed.");
+      }
+    }
+  });
 }
 
 function signOutCloud() {
@@ -1100,6 +1323,5 @@ async function handleAuthChange(user) {
   render();
 }
 
-handleEmailLinkSignIn();
 onAuthStateChanged(auth, handleAuthChange);
 render();
