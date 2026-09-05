@@ -10,10 +10,10 @@
   --gray-event: #C7CBC6;
   --danger: #B5563C;
 
-  /* New free-state colours */
-  --free-bg: #E8F5EC;
-  --free-ink: #245C38;
-  --free-dot: #5DBB78;
+  /* Free status */
+  --free-bg: #DDEFE2;
+  --free-ink: #254B31;
+  --free-dot: #5FAF72;
 
   --radius: 14px;
   font-size: 16px;
@@ -57,6 +57,7 @@ button {
   background: var(--bg);
 }
 
+
 /* =========================================================
    TOP BAR
    ========================================================= */
@@ -66,7 +67,9 @@ button {
   top: 0;
   z-index: 20;
   background: var(--bg);
-  padding: 14px 16px 10px;
+
+  padding: 14px 16px 8px;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -74,35 +77,42 @@ button {
 
 .topbar .weeklabel {
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   letter-spacing: -0.01em;
 }
 
-/* Larger icon buttons */
+
+/* =========================================================
+   ICON BUTTONS
+   ========================================================= */
 
 .iconbtn {
   border: none;
   background: var(--surface);
   color: var(--accent);
-  width: 46px;
-  height: 46px;
-  min-width: 46px;
-  border-radius: 12px;
-  font-size: 1.2rem;
+
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+
+  border-radius: 11px;
+
+  font-size: 1.1rem;
+
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .iconbtn:active {
   transform: scale(0.94);
-  box-shadow: none;
 }
 
+
 /* =========================================================
-   VIEW TOGGLE
+   WEEK / MONTH TOGGLE
    ========================================================= */
 
 .viewtoggle {
@@ -114,12 +124,14 @@ button {
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--ink-soft);
-  font-size: 0.82rem;
+
+  font-size: 0.8rem;
   font-weight: 600;
-  padding: 10px 14px;
-  min-height: 42px;
+
+  padding: 9px 13px;
+  min-height: 40px;
+
   border-radius: 999px;
-  transition: 0.15s ease;
 }
 
 .viewtoggle button:active {
@@ -132,55 +144,61 @@ button {
   border-color: var(--accent);
 }
 
+
 /* =========================================================
    FREE-NOW BANNER
    ========================================================= */
 
 .freebanner {
-  margin: 6px 16px 12px;
-  padding: 15px 16px;
-  min-height: 58px;
-  border-radius: 16px;
+  margin: 4px 16px 10px;
 
-  /* Much nicer than the black/navy block */
+  padding: 14px 16px;
+  min-height: 54px;
+
+  border-radius: var(--radius);
+
+  /* Soft green instead of dark blue */
   background: var(--free-bg);
   color: var(--free-ink);
 
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 
-  border: 1px solid rgba(93, 187, 120, 0.18);
+  border: 1px solid rgba(95, 175, 114, 0.16);
 }
 
 .freebanner .dot {
-  width: 11px;
-  height: 11px;
+  width: 10px;
+  height: 10px;
+
   border-radius: 50%;
+
   background: var(--free-dot);
+
   flex: none;
-  box-shadow: 0 0 0 4px rgba(93, 187, 120, 0.12);
 }
 
 .freebanner.busy {
-  background: #FFF4DF;
-  color: #76521D;
-  border-color: rgba(228, 169, 79, 0.2);
+  background: #F4E8CF;
+  color: #665021;
+
+  border-color: rgba(228, 169, 79, 0.16);
 }
 
 .freebanner.busy .dot {
   background: var(--accent-warm);
-  box-shadow: 0 0 0 4px rgba(228, 169, 79, 0.12);
 }
 
 .freebanner .text {
-  font-size: 0.95rem;
-  line-height: 1.35;
+  font-size: 0.92rem;
+  line-height: 1.3;
 }
 
 .freebanner .text b {
   font-weight: 700;
 }
+
 
 /* =========================================================
    DAY PIPS
@@ -189,30 +207,32 @@ button {
 .daypips {
   display: flex;
   justify-content: space-between;
-  padding: 0 12px 12px;
+
+  padding: 0 16px 10px;
+
   gap: 4px;
 }
 
 .pip {
   flex: 1;
+
   border: none;
   background: transparent;
+
   color: var(--ink-soft);
 
-  /* Larger touch target */
-  min-height: 58px;
-  padding: 7px 2px;
+  padding: 8px 2px;
+  min-height: 52px;
 
-  border-radius: 12px;
+  border-radius: 10px;
+
   font-size: 0.75rem;
 
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 3px;
 
-  transition: background 0.12s ease, transform 0.12s ease;
+  gap: 2px;
 }
 
 .pip:active {
@@ -221,15 +241,17 @@ button {
 
 .pip .num {
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--ink);
 }
 
 .pip.today .num {
   background: var(--accent);
   color: white;
-  width: 30px;
-  height: 30px;
+
+  width: 28px;
+  height: 28px;
+
   border-radius: 50%;
 
   display: flex;
@@ -239,8 +261,8 @@ button {
 
 .pip.selected {
   background: var(--surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
+
 
 /* =========================================================
    TIMELINE
@@ -248,9 +270,13 @@ button {
 
 .dayscroller {
   flex: 1;
+
   overflow-x: auto;
+
   scroll-snap-type: x mandatory;
+
   display: flex;
+
   -webkit-overflow-scrolling: touch;
 }
 
@@ -260,34 +286,46 @@ button {
 
 .daycol {
   flex: 0 0 100%;
+
   scroll-snap-align: start;
-  padding: 0 16px 110px;
+
+  padding: 0 16px 100px;
+
   position: relative;
 }
 
 .timeline {
   position: relative;
+
   border-top: 1px solid var(--line);
 }
 
 .hourrow {
   height: 56px;
+
   border-bottom: 1px solid var(--line);
+
   position: relative;
 }
 
 .hourrow .label {
   position: absolute;
+
   top: -8px;
   left: -2px;
+
   font-size: 0.68rem;
+
   color: var(--ink-soft);
+
   background: var(--bg);
+
   padding-right: 4px;
 }
 
 .eventlayer {
   position: absolute;
+
   top: 0;
   left: 44px;
   right: 0;
@@ -296,6 +334,7 @@ button {
 
 .buffer {
   position: absolute;
+
   left: 4px;
   right: 4px;
 
@@ -306,29 +345,35 @@ button {
   );
 
   opacity: 0.35;
-  border-radius: 7px;
+
+  border-radius: 6px;
 }
 
 .event {
   position: absolute;
+
   left: 4px;
   right: 4px;
 
-  border-radius: 9px;
-  padding: 7px 9px;
+  border-radius: 8px;
+
+  padding: 6px 8px;
 
   color: white;
-  font-size: 0.8rem;
-  line-height: 1.2;
+
+  font-size: 0.78rem;
+  line-height: 1.15;
 
   overflow: hidden;
 
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 .event.optional {
   background: var(--gray-event) !important;
+
   color: var(--ink);
+
   border-left: 5px solid;
 }
 
@@ -338,25 +383,32 @@ button {
 
 .event .meta {
   opacity: 0.85;
-  font-size: 0.71rem;
+
+  font-size: 0.7rem;
 }
 
 .event .dollar {
   float: right;
+
   font-weight: 700;
 }
 
 .nowline {
   position: absolute;
+
   left: 44px;
   right: 0;
+
   height: 2px;
+
   background: var(--danger);
 }
 
 .nowline::before {
   content: "";
+
   position: absolute;
+
   left: -4px;
   top: -3px;
 
@@ -364,72 +416,85 @@ button {
   height: 8px;
 
   border-radius: 50%;
+
   background: var(--danger);
 }
 
 .emptyday {
   text-align: center;
+
   color: var(--ink-soft);
+
   padding: 40px 20px;
+
   font-size: 0.9rem;
 }
+
 
 /* =========================================================
    MONTH VIEW
    ========================================================= */
 
 .monthgrid {
-  padding: 6px 14px 110px;
+  padding: 4px 16px 100px;
 }
 
 .monthhead {
   display: grid;
+
   grid-template-columns: repeat(7, 1fr);
+
   text-align: center;
 
-  font-size: 0.72rem;
+  font-size: 0.7rem;
+
   color: var(--ink-soft);
 
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .monthbody {
   display: grid;
+
   grid-template-columns: repeat(7, 1fr);
+
   gap: 6px;
 }
 
 .monthday {
   aspect-ratio: 1;
 
-  min-height: 44px;
+  border-radius: 10px;
 
-  border-radius: 11px;
   background: var(--surface);
+
   border: none;
 
   display: flex;
+
   flex-direction: column;
+
   align-items: center;
+
   justify-content: flex-start;
 
-  padding-top: 7px;
+  padding-top: 6px;
 
-  font-size: 0.82rem;
+  font-size: 0.8rem;
+
   color: var(--ink);
 
   gap: 4px;
 
-  transition: transform 0.1s ease;
+  min-height: 44px;
 }
 
 .monthday:active {
-  transform: scale(0.94);
+  transform: scale(0.95);
 }
 
 .monthday.today {
   outline: 2px solid var(--accent);
-  outline-offset: -2px;
 }
 
 .monthday.other {
@@ -438,16 +503,21 @@ button {
 
 .monthday .dots {
   display: flex;
+
   gap: 2px;
+
   flex-wrap: wrap;
+
   justify-content: center;
 }
 
 .monthday .dots span {
   width: 5px;
   height: 5px;
+
   border-radius: 50%;
 }
+
 
 /* =========================================================
    QUICK ADD BAR
@@ -455,20 +525,24 @@ button {
 
 .quickbar {
   position: fixed;
+
   bottom: 0;
   left: 0;
   right: 0;
 
   max-width: 480px;
+
   margin: 0 auto;
 
   background: var(--surface);
+
   border-top: 1px solid var(--line);
 
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
 
   display: flex;
-  gap: 9px;
+
+  gap: 8px;
 
   z-index: 30;
 }
@@ -477,35 +551,40 @@ button {
   flex: 1;
 
   border: 1px solid var(--line);
-  border-radius: 12px;
+
+  border-radius: 10px;
 
   padding: 12px 14px;
+
   min-height: 50px;
 
   font-size: 16px;
 
   background: var(--bg);
+
   color: var(--ink);
 }
 
 .quickbar button {
   border: none;
+
   background: var(--accent);
+
   color: white;
 
-  width: 52px;
-  min-width: 52px;
-  min-height: 50px;
+  width: 50px;
+  min-width: 50px;
+  height: 50px;
 
-  border-radius: 12px;
-  font-size: 1.25rem;
+  border-radius: 10px;
 
-  transition: transform 0.12s ease;
+  font-size: 1.2rem;
 }
 
 .quickbar button:active {
   transform: scale(0.94);
 }
+
 
 /* =========================================================
    MODAL
@@ -513,11 +592,13 @@ button {
 
 .overlay {
   position: fixed;
+
   inset: 0;
 
   background: rgba(20, 24, 22, 0.45);
 
   display: flex;
+
   align-items: flex-end;
 
   z-index: 40;
@@ -527,34 +608,38 @@ button {
   background: var(--surface);
 
   width: 100%;
+
   max-width: 480px;
+
   margin: 0 auto;
 
-  border-radius: 22px 22px 0 0;
+  border-radius: 20px 20px 0 0;
 
-  padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+  padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
 
   max-height: 88vh;
+
   overflow-y: auto;
 }
 
 .sheet h2 {
-  margin: 0 0 16px;
-  font-size: 1.1rem;
+  margin: 0 0 12px;
+
+  font-size: 1.05rem;
 }
 
 .field {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .field label {
   display: block;
 
-  font-size: 0.76rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+
   color: var(--ink-soft);
 
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .field input[type=text],
@@ -564,14 +649,16 @@ button {
 .field select {
   width: 100%;
 
-  min-height: 50px;
+  min-height: 48px;
 
-  padding: 11px 12px;
+  padding: 10px 11px;
 
   border: 1px solid var(--line);
-  border-radius: 12px;
+
+  border-radius: 10px;
 
   background: var(--bg);
+
   color: var(--ink);
 
   font-size: 16px;
@@ -579,6 +666,7 @@ button {
 
 .row2 {
   display: flex;
+
   gap: 10px;
 }
 
@@ -586,21 +674,26 @@ button {
   flex: 1;
 }
 
+
 /* =========================================================
    CHIPS
    ========================================================= */
 
 .chiprow {
   display: flex;
+
   gap: 8px;
+
   flex-wrap: wrap;
 }
 
 .chip {
   border: 1px solid var(--line);
+
   background: var(--bg);
 
-  padding: 10px 14px;
+  padding: 9px 13px;
+
   min-height: 42px;
 
   border-radius: 999px;
@@ -608,42 +701,48 @@ button {
   font-size: 0.82rem;
 
   display: flex;
-  align-items: center;
-  gap: 6px;
 
-  transition: transform 0.1s ease;
+  align-items: center;
+
+  gap: 6px;
 }
 
 .chip:active {
-  transform: scale(0.95);
+  transform: scale(0.96);
 }
 
 .chip .swatch {
   width: 10px;
   height: 10px;
+
   border-radius: 50%;
 }
 
 .chip.selected {
   border-color: var(--accent);
+
   background: rgba(34, 51, 59, 0.06);
+
   font-weight: 700;
 }
 
+
 /* =========================================================
-   TOGGLES
+   TOGGLE ROWS
    ========================================================= */
 
 .togglerow {
   display: flex;
+
   align-items: center;
+
   justify-content: space-between;
 
-  padding: 13px 2px;
+  padding: 12px 2px;
 
   border-bottom: 1px solid var(--line);
 
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 .togglerow input[type=checkbox] {
@@ -651,14 +750,17 @@ button {
   height: 22px;
 }
 
+
 /* =========================================================
-   MODAL BUTTONS
+   MODAL ACTION BUTTONS
    ========================================================= */
 
 .sheetactions {
   display: flex;
+
   gap: 10px;
-  margin-top: 18px;
+
+  margin-top: 16px;
 }
 
 .btn {
@@ -667,14 +769,14 @@ button {
   border: none;
 
   min-height: 52px;
-  padding: 13px;
 
-  border-radius: 13px;
+  padding: 13px 14px;
 
-  font-size: 0.94rem;
+  border-radius: 12px;
+
+  font-size: 0.92rem;
+
   font-weight: 600;
-
-  transition: transform 0.1s ease;
 }
 
 .btn:active {
@@ -683,32 +785,41 @@ button {
 
 .btn.primary {
   background: var(--accent);
+
   color: white;
 }
 
 .btn.ghost {
   background: var(--bg);
+
   color: var(--ink);
 }
 
 .btn.danger {
   background: transparent;
+
   color: var(--danger);
 }
 
+
 /* =========================================================
-   MOBILE-SPECIFIC IMPROVEMENTS
+   SMALL PHONE ADJUSTMENTS
    ========================================================= */
 
-@media (max-width: 480px) {
+@media (max-width: 380px) {
   .topbar {
-    padding-left: 14px;
-    padding-right: 14px;
+    padding-left: 12px;
+    padding-right: 12px;
   }
 
   .freebanner {
-    margin-left: 14px;
-    margin-right: 14px;
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+
+  .daypips {
+    padding-left: 12px;
+    padding-right: 12px;
   }
 
   .daycol {
@@ -716,19 +827,9 @@ button {
     padding-right: 12px;
   }
 
-  .event {
-    left: 3px;
-    right: 3px;
-  }
-}
-
-/* =========================================================
-   LARGER SCREENS
-   ========================================================= */
-
-@media (min-width: 481px) {
-  #app {
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.04);
+  .viewtoggle button {
+    padding-left: 11px;
+    padding-right: 11px;
   }
 }
 ```
