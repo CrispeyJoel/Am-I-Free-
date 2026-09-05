@@ -356,7 +356,7 @@ function renderQuickBar() {
       title="Add event by voice"
       aria-label="Add event by voice"
     >
-      🎙
+      Voice
     </button>
 
     <button
