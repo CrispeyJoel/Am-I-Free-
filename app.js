@@ -723,18 +723,29 @@ async function enableNotifications() {
     if (!("Notification" in window)) return;
     const supported = await messagingSupported();
     if (!supported) return;
-    const perm = await Notification.requestPermission();
+
+    let perm = Notification.permission;
+    if (perm === "default") {
+      perm = await Notification.requestPermission();
+    }
     if (perm !== "granted") return;
+
     const reg = await navigator.serviceWorker.ready;
     const messaging = getMessaging(fbApp);
-    const token = await getToken(messaging, { vapidKey: VAPID_PUBLIC_KEY, serviceWorkerRegistration: reg });
+    const token = await getToken(messaging, { 
+      vapidKey: VAPID_PUBLIC_KEY, 
+      serviceWorkerRegistration: reg 
+    });
+
     if (token && currentUser) {
-      await setDoc(doc(db, "users", currentUser.uid), { pushToken: token }, { merge: true });
+      await setDoc(doc(db, "users", currentUser.uid), { 
+        pushToken: token,
+        updatedAt: Date.now()
+      }, { merge: true });
     }
   } catch (e) {
-  console.error("Push setup failed:", e);
-  alert("Push setup failed: " + e.message);
-}
+    console.error("Push setup failed:", e);
+  }
 }
 
 onAuthStateChanged(auth, (user) => {
