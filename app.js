@@ -1,4 +1,4 @@
-[source: 1]import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 
 import {
   getAuth,
