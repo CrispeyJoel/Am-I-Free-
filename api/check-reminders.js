@@ -1,12 +1,23 @@
-const admin = require("firebase-admin");
-const { DateTime } = require("luxon");
+import admin from "firebase-admin";
+import { DateTime } from "luxon";
 
 // ------------------------------------------------------------
 // FIREBASE INITIALIZATION
 // ------------------------------------------------------------
 
 if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+  if (!serviceAccountEnv) {
+    throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is not defined.");
+  }
+
+  const serviceAccount = JSON.parse(serviceAccountEnv);
+
+  // Fix escaped newlines in environment variable
+  if (serviceAccount.private_key) {
+    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
+  }
 
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
@@ -22,7 +33,6 @@ const db = admin.firestore();
 function occursOn(ev, dateStr) {
   if (!ev.dateISO) return false;
 
-  // Extract purely the YYYY-MM-DD portion to avoid UTC offset shifts
   const anchorStr = ev.dateISO.split("T")[0];
   const anchor = DateTime.fromISO(anchorStr, { zone: "UTC" });
   const target = DateTime.fromISO(dateStr, { zone: "UTC" });
@@ -98,7 +108,7 @@ function reminderDateTime(ev, occurrenceDateStr, timezone) {
 // HANDLER
 // ------------------------------------------------------------
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   try {
     // Security verification
     if (req.query.secret !== process.env.CRON_SECRET) {
@@ -295,4 +305,4 @@ module.exports = async (req, res) => {
       error: err.message
     });
   }
-};
+}
