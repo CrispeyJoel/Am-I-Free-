@@ -1,8 +1,12 @@
 const admin = require("firebase-admin");
 const { DateTime } = require("luxon");
 
+// ---------- Firebase ----------
+
 if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  const serviceAccount = JSON.parse(
+    process.env.FIREBASE_SERVICE_ACCOUNT
+  );
 
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
@@ -11,16 +15,24 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-
 // ---------- Recurrence ----------
 
 function occursOn(ev, dateStr) {
-  const anchor = DateTime.fromISO(ev.dateISO, { zone: "UTC" });
-  const target = DateTime.fromISO(dateStr, { zone: "UTC" });
+  const anchor = DateTime.fromISO(ev.dateISO, {
+    zone: "UTC"
+  });
 
-  const diff = Math.round(target.diff(anchor, "days").days);
+  const target = DateTime.fromISO(dateStr, {
+    zone: "UTC"
+  });
 
-  if (diff < 0) return false;
+  const diff = Math.round(
+    target.diff(anchor, "days").days
+  );
+
+  if (diff < 0) {
+    return false;
+  }
 
   if (ev.recurrence === "weekly") {
     return diff % 7 === 0;
@@ -33,87 +45,143 @@ function occursOn(ev, dateStr) {
   return diff === 0;
 }
 
-
 // ---------- Reminder calculation ----------
 
-function reminderDateTime(event, occurrenceDateStr, timezone) {
-
+function reminderDateTime(
+  event,
+  occurrenceDateStr,
+  timezone
+) {
   // Event start
   const eventLocal = DateTime
-    .fromISO(occurrenceDateStr, { zone: timezone })
+    .fromISO(occurrenceDateStr, {
+      zone: timezone
+    })
     .plus({
-      minutes: event.start
+      minutes: Number(event.start) || 0
     });
 
-  // Leaving time = event start - buffer before
+  // Leaving time
   const leaveLocal = eventLocal.minus({
-    minutes: event.bufferBefore || 0
+    minutes: Number(event.bufferBefore) || 0
   });
 
-  // Old events without a reminder get 30 minutes by default
+  // Old events without a reminder default to 30 minutes
   const reminder = event.reminder || "30m";
 
   switch (reminder) {
-
     case "30m":
-      return leaveLocal.minus({ minutes: 30 });
+      return leaveLocal.minus({
+        minutes: 30
+      });
 
     case "1h":
-      return leaveLocal.minus({ hours: 1 });
+      return leaveLocal.minus({
+        hours: 1
+      });
 
     case "6h":
-      return leaveLocal.minus({ hours: 6 });
+      return leaveLocal.minus({
+        hours: 6
+      });
 
     case "12h":
-      return leaveLocal.minus({ hours: 12 });
+      return leaveLocal.minus({
+        hours: 12
+      });
 
     case "1d":
-      return leaveLocal.minus({ days: 1 });
+      return leaveLocal.minus({
+        days: 1
+      });
 
     case "1w":
-      return leaveLocal.minus({ weeks: 1 });
+      return leaveLocal.minus({
+        weeks: 1
+      });
 
     case "1mo":
-      return leaveLocal.minus({ months: 1 });
+      return leaveLocal.minus({
+        months: 1
+      });
 
     case "none":
-    default:
       return null;
+
+    default:
+      return leaveLocal.minus({
+        minutes: 30
+      });
   }
 }
-
 
 // ---------- Cron ----------
 
 module.exports = async (req, res) => {
-
   try {
+    // ---------- Security ----------
 
-    // Security check
-    if (req.query.secret !== process.env.CRON_SECRET) {
+    if (
+      req.query.secret !==
+      process.env.CRON_SECRET
+    ) {
       return res.status(401).json({
+        ok: false,
         error: "unauthorized"
       });
     }
 
-    const usersSnap = await db
-      .collection("users")
-      .get();
+    // ---------- Current time ----------
 
     const nowUtc = DateTime.utc();
 
     let sent = 0;
     let checked = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    // ---------- Get users ----------
+
+    const usersSnap = await db
+      .collection("users")
+      .get();
+
+    console.log(
+      `Checking ${usersSnap.size} users`
+    );
+
+    // ---------- Check each user ----------
 
     for (const userDoc of usersSnap.docs) {
-
       const user = userDoc.data();
 
-      if (!user.pushToken || !user.timezone) {
+      if (!user.pushToken) {
+        console.log(
+          "Skipping user with no push token:",
+          userDoc.id
+        );
         continue;
       }
 
-      const localNow = nowUtc.setZone(user.timezone);
+      if (!user.timezone) {
+        console.log(
+          "Skipping user with no timezone:",
+          userDoc.id
+        );
+        continue;
+      }
+
+      const localNow = nowUtc.setZone(
+        user.timezone
+      );
+
+      console.log("User:", {
+        id: userDoc.id,
+        timezone: user.timezone,
+        localNow: localNow.toISO()
+      });
+
+      // ---------- Get events ----------
 
       const dataDoc = await db
         .collection("users")
@@ -123,96 +191,165 @@ module.exports = async (req, res) => {
         .get();
 
       if (!dataDoc.exists) {
+        console.log(
+          "No events document for:",
+          userDoc.id
+        );
         continue;
       }
 
-      const events = dataDoc.data().list || [];
+      const events =
+        dataDoc.data().list || [];
 
+      console.log(
+        `Found ${events.length} events for ${userDoc.id}`
+      );
 
-      /*
-       * Look at occurrence dates from yesterday
-       * through roughly 1 month in the future.
-       *
-       * This is necessary because a reminder can happen
-       * days or weeks before the actual event.
-       */
+      // ---------- Date range ----------
+
+      // We check from yesterday through 35 days ahead
+      // because reminders can happen before an event.
+
       const firstDate = localNow
         .startOf("day")
-        .minus({ days: 1 });
+        .minus({
+          days: 1
+        });
 
       const lastDate = localNow
         .startOf("day")
-        .plus({ days: 35 });
+        .plus({
+          days: 35
+        });
 
+      // ---------- Check events ----------
 
       for (const ev of events) {
-
-        if (!ev.dateISO || ev.start == null) {
+        if (
+          !ev.dateISO ||
+          ev.start == null
+        ) {
+          console.log(
+            "Skipping malformed event:",
+            ev
+          );
           continue;
         }
 
-
         let cursor = firstDate;
 
-
         while (cursor <= lastDate) {
+          const occurrenceDateStr =
+            cursor.toISODate();
 
-          const occurrenceDateStr = cursor.toISODate();
-
-
-          // Is this event occurring on this date?
-          if (!occursOn(ev, occurrenceDateStr)) {
-
+          // Is the event occurring on this date?
+          if (
+            !occursOn(
+              ev,
+              occurrenceDateStr
+            )
+          ) {
             cursor = cursor.plus({
               days: 1
             });
 
             continue;
           }
-
 
           checked++;
 
+          // ---------- Calculate event time ----------
 
-          // Calculate the actual reminder time
-          const notifyLocal = reminderDateTime(
-            ev,
-            occurrenceDateStr,
-            user.timezone
+          const eventLocal = DateTime
+            .fromISO(
+              occurrenceDateStr,
+              {
+                zone: user.timezone
+              }
+            )
+            .plus({
+              minutes:
+                Number(ev.start) || 0
+            });
+
+          // ---------- Calculate leaving time ----------
+
+          const leaveLocal =
+            eventLocal.minus({
+              minutes:
+                Number(
+                  ev.bufferBefore
+                ) || 0
+            });
+
+          // ---------- Calculate reminder time ----------
+
+          const notifyLocal =
+            reminderDateTime(
+              ev,
+              occurrenceDateStr,
+              user.timezone
+            );
+
+          // No reminder
+          if (!notifyLocal) {
+            console.log(
+              "No reminder:",
+              ev.title
+            );
+
+            cursor = cursor.plus({
+              days: 1
+            });
+
+            continue;
+          }
+
+          // ---------- Calculate difference ----------
+
+          const diffMin =
+            notifyLocal.diff(
+              localNow,
+              "minutes"
+            ).minutes;
+
+          // ---------- Diagnostic logging ----------
+
+          console.log(
+            "REMINDER CHECK",
+            {
+              user: userDoc.id,
+              event: ev.title,
+              eventId: ev.id,
+              occurrence:
+                occurrenceDateStr,
+              reminder:
+                ev.reminder || "30m",
+              now:
+                localNow.toISO(),
+              eventStart:
+                eventLocal.toISO(),
+              leaveAt:
+                leaveLocal.toISO(),
+              notifyAt:
+                notifyLocal.toISO(),
+              diffMin:
+                Number(
+                  diffMin.toFixed(2)
+                )
+            }
           );
 
+          // ---------- Is reminder due? ----------
 
-          // No reminder selected
-          if (!notifyLocal) {
+          // Send if reminder time is now
+          // or happened within the last 5 minutes.
 
-            cursor = cursor.plus({
-              days: 1
-            });
-
-            continue;
-          }
-
-
-          /*
-           * How many minutes until the reminder?
-           *
-           * Example:
-           * current time = 2:29
-           * reminder = 2:30
-           * diff = +1
-           */
-          const diffMin = notifyLocal.diff(
-            localNow,
-            "minutes"
-          ).minutes;
-
-
-          /*
-           * Only send reminders that are due.
-           *
-           * The -5 allows for a cron running slightly late.
-           */
-          if (diffMin > 0 || diffMin < -5) {
+          if (
+            diffMin > 0 ||
+            diffMin < -5
+          ) {
+            skipped++;
 
             cursor = cursor.plus({
               days: 1
@@ -221,15 +358,10 @@ module.exports = async (req, res) => {
             continue;
           }
 
+          // ---------- Prevent duplicate notifications ----------
 
-          /*
-           * One notification per event occurrence.
-           *
-           * For recurring events:
-           * September 5 and September 12
-           * get separate notification records.
-           */
-          const key = `${ev.id}_${occurrenceDateStr}`;
+          const key =
+            `${ev.id}_${occurrenceDateStr}`;
 
           const notifiedRef = db
             .collection("users")
@@ -237,10 +369,14 @@ module.exports = async (req, res) => {
             .collection("notified")
             .doc(key);
 
-
-          const already = await notifiedRef.get();
+          const already =
+            await notifiedRef.get();
 
           if (already.exists) {
+            console.log(
+              "Already notified:",
+              key
+            );
 
             cursor = cursor.plus({
               days: 1
@@ -249,65 +385,97 @@ module.exports = async (req, res) => {
             continue;
           }
 
-
-          // Calculate event and leaving times for notification text
-          const eventLocal = DateTime
-            .fromISO(occurrenceDateStr, {
-              zone: user.timezone
-            })
-            .plus({
-              minutes: ev.start
-            });
-
-
-          const leaveLocal = eventLocal.minus({
-            minutes: ev.bufferBefore || 0
-          });
-
+          // ---------- Send notification ----------
 
           try {
-
-            await admin.messaging().send({
-
-              token: user.pushToken,
-
-              notification: {
-
-                title: ev.title || "Reminder",
-
-                body:
-                  `Leave at ${leaveLocal.toFormat("h:mm a")} for ` +
-                  `${eventLocal.toFormat("h:mm a")}.`
+            console.log(
+              "SENDING PUSH:",
+              {
+                user: userDoc.id,
+                event: ev.title,
+                token:
+                  user.pushToken
+                    ? "present"
+                    : "missing"
               }
+            );
 
-            });
+            await admin
+              .messaging()
+              .send({
+                token:
+                  user.pushToken,
 
+                notification: {
+                  title:
+                    ev.title ||
+                    "Actually Free",
 
-            // ONLY mark as notified after successful send
+                  body:
+                    `Leave at ${leaveLocal.toFormat(
+                      "h:mm a"
+                    )} for ${eventLocal.toFormat(
+                      "h:mm a"
+                    )}.`
+                },
+
+                webpush: {
+                  notification: {
+                    title:
+                      ev.title ||
+                      "Actually Free",
+
+                    body:
+                      `Leave at ${leaveLocal.toFormat(
+                        "h:mm a"
+                      )} for ${eventLocal.toFormat(
+                        "h:mm a"
+                      )}.`,
+
+                    icon:
+                      "https://am-i-free-eta.vercel.app/icon-192.png"
+                  }
+                }
+              });
+
+            // Only mark as notified AFTER
+            // Firebase successfully accepts the message.
+
             await notifiedRef.set({
+              sentAt:
+                nowUtc.toISO(),
 
-              sentAt: nowUtc.toISO(),
-
-              occurrenceDate: occurrenceDateStr
-
+              occurrenceDate:
+                occurrenceDateStr
             });
-
 
             sent++;
 
-          } catch (err) {
-
-            console.error(
-              "Push send failed for",
-              userDoc.id,
-              ev.id,
-              err
+            console.log(
+              "PUSH SENT SUCCESSFULLY:",
+              ev.title
             );
 
-            // Do NOT create notifiedRef here.
-            // The next cron run can retry it.
-          }
+          } catch (err) {
+            failed++;
 
+            console.error(
+              "PUSH SEND FAILED:",
+              {
+                user:
+                  userDoc.id,
+                event:
+                  ev.title,
+                error:
+                  err.message,
+                code:
+                  err.code
+              }
+            );
+
+            // Do NOT create notifiedRef.
+            // The next cron run can retry.
+          }
 
           cursor = cursor.plus({
             days: 1
@@ -316,28 +484,36 @@ module.exports = async (req, res) => {
       }
     }
 
+    // ---------- Response ----------
+
+    console.log(
+      "CRON COMPLETE",
+      {
+        sent,
+        checked,
+        skipped,
+        failed
+      }
+    );
 
     return res.status(200).json({
-
       ok: true,
       sent,
-      checked
-
+      checked,
+      skipped,
+      failed
     });
 
-
   } catch (err) {
-
     console.error(
-      "Notification cron failed:",
+      "NOTIFICATION CRON FAILED:",
       err
     );
 
     return res.status(500).json({
-
       ok: false,
-      error: err.message
-
+      error:
+        err.message
     });
   }
 };
