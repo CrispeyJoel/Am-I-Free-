@@ -52,23 +52,88 @@ module.exports = async (req, res) => {
     .map(c => `${c.name} (earns money by default: ${!!c.earnsDefault})`)
     .join(", ");
 
-  const prompt = `You turn a spoken or typed sentence into a calendar event for a personal scheduling app.
-Today's date is ${todayISO || new Date().toISOString().slice(0, 10)} in timezone ${timezone || "Australia/Sydney"}. Resolve relative dates ("tomorrow", "next Tuesday", "Friday") against that date — pick the NEXT occurrence of a named weekday if today isn't that day.
-Categories available: ${catDescriptions}. Pick the closest matching one; default to "Personal" if nothing fits.
-Default duration is 60 minutes unless stated.
-Default travel buffer is 30 minutes before and 30 minutes after, unless the sentence specifies a different amount or says something like "no buffer" (then use 0).
-Default "mandatory" to true unless the sentence implies it's optional or flexible (e.g. "if I have time", "maybe").
-Default "reminder" to "30m" unless the sentence names a different lead time.
+const prompt = `You turn a spoken or typed sentence into a calendar event for a personal scheduling app.
 
-The "title" must be a clean, short event name only — the activity or who it's with. Strip out everything else: no "schedule", "at", "for", "on", "o'clock", times, dates, or day names. If the input is messy voice-transcription filler, extract just the core activity.
+Today's date is ${todayISO || new Date().toISOString().slice(0, 10)} in timezone ${timezone || "Australia/Sydney"}.
 
-Examples:
-- "Schedule work for four o'clock" → title: "Work"
-- "Piano lesson with Zach next Tuesday at 4pm" → title: "Piano lesson with Zach"
-- "Remind me to pick up dry cleaning tomorrow at 5" → title: "Pick up dry cleaning"
-- "Dentist appointment Friday 9am no buffer" → title: "Dentist appointment"
+Resolve relative dates such as "tomorrow", "next Tuesday", and "Friday" against today's date.
 
-Sentence: "${text.trim()}"`;
+Categories available: ${catDescriptions}.
+Pick the closest matching category.
+Default to "Personal" if nothing fits.
+
+DEFAULTS:
+- Duration: 60 minutes unless stated.
+- Travel buffer: 30 minutes before and 30 minutes after.
+- If the user says "no buffer", "no travel time", etc., use 0.
+- Mandatory: true unless the user clearly says it is optional or flexible.
+- Reminder: 30m unless another reminder time is explicitly stated.
+
+TITLE EXTRACTION IS EXTREMELY IMPORTANT.
+
+The title must contain ONLY the actual activity, appointment, task, or person involved.
+
+The title must NEVER contain:
+- dates
+- days of the week
+- times
+- "at"
+- "on"
+- "for"
+- "tomorrow"
+- "today"
+- "next week"
+- "schedule"
+- "calendar"
+- "remind me"
+- "put in"
+- "add"
+- "book"
+- "please"
+- "can you"
+- "I need to"
+- "I have to"
+- conversational filler
+- instructions to the assistant
+- the entire original sentence
+
+Treat the input as a voice transcription, not as text that should be copied.
+
+Extract the smallest natural phrase that describes the event.
+
+For example:
+
+"can you put piano lesson with Zach into my calendar tomorrow at four"
+TITLE = "Piano lesson with Zach"
+
+"hey can you add work Friday at 9am"
+TITLE = "Work"
+
+"please remind me that I have a dentist appointment next Tuesday at 10"
+TITLE = "Dentist appointment"
+
+"uh can you put dinner with Sarah in for Saturday at seven"
+TITLE = "Dinner with Sarah"
+
+"I need to pick up the dry cleaning tomorrow at five"
+TITLE = "Pick up dry cleaning"
+
+"schedule my tutoring session with James at 4pm"
+TITLE = "Tutoring session with James"
+
+"can you add a meeting with John from work at 2"
+TITLE = "Meeting with John"
+
+If the sentence contains a long conversational introduction, completely ignore that introduction.
+
+Do NOT copy the sentence into the title.
+
+Do NOT include more information than necessary.
+
+If you are uncertain, prefer a short title over a long title.
+
+Sentence:
+"${text.trim()}"`
 
   try {
     const geminiRes = await fetch(
