@@ -52,9 +52,6 @@ let unsubscribeUserDoc = null;
 setPersistence(auth, browserLocalPersistence).catch(error => {
   console.error("Firebase persistence failed:", error);
 });
-const db = getFirestore(fbApp);
-let currentUser = null;
-let suppressNextCloudPush = false; // avoids re-saving the instant a remote update arrives
 
 /* ---------- Config ---------- */
 const DAY_START_MIN = 6 * 60;   // 6:00am
