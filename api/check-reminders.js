@@ -260,11 +260,7 @@ module.exports = async (req, res) => {
             localNow: localNow.toFormat("yyyy-MM-dd HH:mm:ss"),
             diffMin: Number(diffMin.toFixed(2))
           });
-          }
 
-          /*
-           * Reminder is not due yet.
-           */
           if (diffMin > 0) {
             skipped++;
 
@@ -275,9 +271,6 @@ module.exports = async (req, res) => {
             continue;
           }
 
-          /*
-           * Reminder happened more than 5 minutes ago.
-           */
           if (diffMin < -5) {
             skipped++;
 
@@ -288,16 +281,11 @@ module.exports = async (req, res) => {
             continue;
           }
 
-          /*
-           * Reminder is due.
-           */
-
           console.log(
             "REMINDER DUE",
             {
               event: ev.title,
-              occurrence:
-                occurrenceDateStr,
+              occurrence: occurrenceDateStr,
               diffMin
             }
           );
@@ -323,6 +311,34 @@ module.exports = async (req, res) => {
             cursor = cursor.plus({
               days: 1
             });
+
+            continue;
+          }
+
+          try {
+            console.log(
+              "SENDING PUSH",
+              ev.title
+            );
+
+            // ... Firebase send code ...
+
+          } catch (err) {
+            failed++;
+
+            console.error(
+              "PUSH FAILED",
+              {
+                event: ev.title,
+                code: err.code,
+                message: err.message
+              }
+            );
+          }
+
+          cursor = cursor.plus({
+            days: 1
+          });
 
             continue;
           }
