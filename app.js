@@ -3,13 +3,7 @@
    This file must be loaded as a <script type="module"> for the imports below to work. */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
-  getAuth,
-  setPersistence,
-  browserLocalPersistence,
-  GoogleAuthProvider,
-  signInWithPopup,
-  onAuthStateChanged,
-  signOut
+  getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, onSnapshot
@@ -755,7 +749,7 @@ if ("serviceWorker" in navigator) {
 }
 
 function signInCloud() {
-  signInWithPopup(auth, new GoogleAuthProvider()).catch(err => alert("Sign-in failed: " + err.message));
+  signInWithRedirect(auth, new GoogleAuthProvider());
 }
 function signOutCloud() { signOut(auth); }
 
@@ -829,6 +823,8 @@ async function enableNotifications() {
     console.error("Push setup failed:", e);
   }
 }
+
+getRedirectResult(auth).catch(err => console.warn("Redirect sign-in error:", err.message));
 
 onAuthStateChanged(auth, (user) => {
   currentUser = user;
