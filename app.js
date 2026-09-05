@@ -279,13 +279,11 @@ function renderDayCol(date) {
   const nowMin = new Date().getHours()*60+new Date().getMinutes();
   const showNow = sameDay(date,new Date()) && nowMin>=DAY_START_MIN && nowMin<=DAY_END_MIN;
   const nowLine = showNow ? `<div class="nowline" id="nowline" style="top:${(nowMin-DAY_START_MIN)/60*HOUR_PX}px"></div>` : "";
-  const empty = evs.length===0 ? `<div class="emptyday">Nothing scheduled — tap + below to add something.</div>` : "";
   return `<div class="daycol">
     <div class="timeline" style="height:${(DAY_END_MIN-DAY_START_MIN)/60*HOUR_PX}px">
       ${hours}
       <div class="eventlayer">${blocks}${nowLine}</div>
     </div>
-    ${empty}
   </div>`;
 }
 
