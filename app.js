@@ -271,7 +271,39 @@ function render() {
   }
 }
 
-function renderTopbar() { const label = view === "month" ? monthCursor.toLocaleDateString(undefined, { month: "long", year: "numeric" }) : `${weekStart.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${addDays(weekStart, 6).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`; return ` <div class="topbar"> <button class="iconbtn" data-act="prev">‹</button> <div style="text-align:center"> <div class="weeklabel">${label}</div> </div> <button class="iconbtn" data-act="next">›</button> </div> <div class="topbar" style="padding-top:0"> <button class="todaybtn" data-act="today" title="Back to today"> Today </button> <div class="viewtoggle"> <button data-view="day" class="${view === "day" ? "active" : ""}"> Week </button> <button data-view="month" class="${view === "month" ? "active" : ""}"> Month </button> </div> <button class="signinbtn" data-act="cloud" title="Cloud sync"> ${currentUser ? "Signed in" : "Sign in"} </button> </div> <div id="cloudstatus" class="cloudstatus"> ${ currentUser ? `Synced as ${currentUser.displayName || currentUser.email}` : "Sign in to back up your calendar + enable notifications" } </div> `; }
+function renderTopbar() {
+  const label = view === "month" 
+    ? monthCursor.toLocaleDateString(undefined, { month: "long", year: "numeric" }) 
+    : `${weekStart.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${addDays(weekStart, 6).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+
+  const pushActive = ("Notification" in window) && Notification.permission === "granted";
+
+  return `
+    <div class="topbar">
+      <button class="iconbtn" data-act="prev">‹</button>
+      <div style="text-align:center">
+        <div class="weeklabel">${label}</div>
+      </div>
+      <button class="iconbtn" data-act="next">›</button>
+    </div>
+    <div class="topbar" style="padding-top:0">
+      <button class="todaybtn" data-act="today" title="Back to today"> Today </button>
+      <div class="viewtoggle">
+        <button data-view="day" class="${view === "day" ? "active" : ""}"> Week </button>
+        <button data-view="month" class="${view === "month" ? "active" : ""}"> Month </button>
+      </div>
+      <button class="pushbtn ${pushActive ? "active" : ""}" data-act="toggle-push" title="Toggle push notifications">
+        ${pushActive ? "🔔 Push On" : "🔕 Push Off"}
+      </button>
+      <button class="signinbtn" data-act="cloud" title="Cloud sync">
+        ${currentUser ? "Signed in" : "Sign in"}
+      </button>
+    </div>
+    <div id="cloudstatus" class="cloudstatus">
+      ${currentUser ? `Synced as ${currentUser.displayName || currentUser.email}` : "Sign in to back up your calendar + enable notifications"}
+    </div>
+  `;
+}
 
 function renderFreeBanner() {
   const st = freeStatusNow();
@@ -490,13 +522,14 @@ function startVoiceInput() {
 
 /* ---------- Event handlers ---------- */
 function attachHandlers() {
-  app.querySelectorAll("[data-act]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
+  app.querySelectorAll("[data-act]").forEach(btn => {
+    btn.addEventListener("click", () => {
       const act = btn.dataset.act;
-      if (act==="today") { weekStart = startOfWeek(new Date()); selectedDate = startOfDay(new Date()); monthCursor = startOfMonth(new Date()); render(); }
-      if (act==="prev") { view==="month" ? shiftMonth(-1) : shiftWeek(-1); }
-      if (act==="next") { view==="month" ? shiftMonth(1) : shiftWeek(1); }
-      if (act==="cloud") {
+      if (act === "today") { weekStart = startOfWeek(new Date()); selectedDate = startOfDay(new Date()); monthCursor = startOfMonth(new Date()); render(); }
+      if (act === "prev") { view === "month" ? shiftMonth(-1) : shiftWeek(-1); }
+      if (act === "next") { view === "month" ? shiftMonth(1) : shiftWeek(1); }
+      if (act === "toggle-push") { enableNotifications(); } // <--- ADD THIS LINE
+      if (act === "cloud") {
         if (!currentUser) signInCloud();
         else if (confirm(`Synced as ${currentUser.displayName||currentUser.email}. Sign out of cloud backup?`)) signOutCloud();
       }
@@ -721,26 +754,21 @@ function signOutCloud() { signOut(auth); }
 async function enableNotifications() {
   try {
     if (!("Notification" in window)) {
-      console.warn("Notifications not supported in this browser.");
-      return;
-    }
-
-    const supported = await messagingSupported();
-    if (!supported) {
-      console.warn("Messaging not supported in this browser environment.");
+      alert("Notifications are not supported by your browser.");
       return;
     }
 
     let perm = Notification.permission;
-    if (perm === "default") {
+    if (perm !== "granted") {
       perm = await Notification.requestPermission();
     }
+
     if (perm !== "granted") {
-      console.warn("Notification permission was denied or dismissed.");
+      alert("Notification permissions were denied. Please enable them in your browser settings.");
+      render();
       return;
     }
 
-    // Explicitly register sw.js directly instead of waiting on page load events
     const reg = await navigator.serviceWorker.register("./sw.js");
     await navigator.serviceWorker.ready;
 
@@ -755,10 +783,14 @@ async function enableNotifications() {
         pushToken: token,
         updatedAt: Date.now()
       }, { merge: true });
-      console.log("Push token automatically generated and saved to Firestore:", token);
+      
+      console.log("Push token generated:", token);
     }
+
+    // Refresh topbar button state
+    render();
   } catch (e) {
-    console.error("Push setup failed with error:", e);
+    console.error("Push setup failed:", e);
   }
 }
 

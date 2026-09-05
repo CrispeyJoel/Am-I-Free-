@@ -883,3 +883,35 @@ button {
 #voicebtn:active {
   transform: scale(0.94);
 }
+
+/* Push Notification Toggle Button */
+.pushbtn {
+  background-color: #f1f3f4;
+  color: #3c4043;
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pushbtn:hover {
+  background-color: #e8eaed;
+  border-color: #c6c9ce;
+}
+
+/* Enabled State (🔔 Push On) */
+.pushbtn.active {
+  background-color: #e6f4ea;
+  color: #137333;
+  border-color: #ceead6;
+}
+
+.pushbtn.active:hover {
+  background-color: #d2e3d5;
+}
