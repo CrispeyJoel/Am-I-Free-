@@ -34,7 +34,7 @@ body {
   overscroll-behavior-y: contain;
 
   /* Keeps content clear of the notch/status bar */
-  padding-top: env(safe-area-inset-top);
+  /*padding-top: env(safe-area-inset-top);*/
 }
 
 button,
@@ -861,5 +861,12 @@ button {
   .viewtoggle button {
     padding-left: 11px;
     padding-right: 11px;
+  }
+}
+
+/* iPhone Home Screen safe area */
+@media (max-width: 600px) {
+  .topbar:first-child {
+    padding-top: calc(8px + env(safe-area-inset-top));
   }
 }
