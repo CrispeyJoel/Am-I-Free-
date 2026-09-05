@@ -3,7 +3,13 @@
    This file must be loaded as a <script type="module"> for the imports below to work. */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
+  getAuth,
+  setPersistence,
+  browserLocalPersistence,
+  GoogleAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged,
+  signOut
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, onSnapshot
@@ -27,6 +33,9 @@ const VAPID_PUBLIC_KEY = "BFXiYQnuOx5YnxnSs_6hbwYScOzo0V8brVdsOAzGNOVBhWh_9XfPn6
 
 const fbApp = initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(fbApp);
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+  console.error("Auth persistence setup failed:", err);
+});
 const db = getFirestore(fbApp);
 let currentUser = null;
 let suppressNextCloudPush = false; // avoids re-saving the instant a remote update arrives
