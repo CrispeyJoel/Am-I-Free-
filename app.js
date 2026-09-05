@@ -3,7 +3,7 @@
    This file must be loaded as a <script type="module"> for the imports below to work. */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup,
+  getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink,
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
@@ -746,12 +746,35 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", ()=> navigator.serviceWorker.register("./sw.js").catch(()=>{}));
 }
 
-function signInCloud() {
-  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-    alert("Cloud sign-in doesn't work from the home-screen app on iPhone (a Safari limitation). Please open this site in regular Safari once, sign in there, then reopen the app — it'll pick up the same sign-in automatically.");
+async function signInCloud() {
+  const savedEmail = window.localStorage.getItem("af_email_for_signin");
+  const email = prompt("Enter your email to sign in / back up your calendar:", savedEmail || "");
+  if (!email) return;
+  window.localStorage.setItem("af_email_for_signin", email);
+
+  try {
+    await sendSignInLinkToEmail(auth, email, {
+      url: window.location.origin + window.location.pathname,
+      handleCodeInApp: true
+    });
+  } catch (err) {
+    alert("Couldn't send the sign-in email: " + err.message);
     return;
   }
-  signInWithPopup(auth, new GoogleAuthProvider()).catch(err => alert("Sign-in failed: " + err.message));
+
+  const link = prompt("Check your email for a sign-in link. Copy the ENTIRE link and paste it here:", "");
+  if (!link) return;
+
+  if (!isSignInWithEmailLink(auth, link)) {
+    alert("That doesn't look like a valid sign-in link — make sure you copied the whole thing.");
+    return;
+  }
+
+  try {
+    await signInWithEmailLink(auth, email, link);
+  } catch (err) {
+    alert("Sign-in failed: " + err.message);
+  }
 }
 function signOutCloud() { signOut(auth); }
 
@@ -823,6 +846,18 @@ async function enableNotifications() {
     render();
   } catch (e) {
     console.error("Push setup failed:", e);
+  }
+}
+
+if (isSignInWithEmailLink(auth, window.location.href)) {
+  const savedEmail = window.localStorage.getItem("af_email_for_signin");
+  if (savedEmail) {
+    signInWithEmailLink(auth, savedEmail, window.location.href)
+      .then(() => {
+        window.localStorage.removeItem("af_email_for_signin");
+        window.history.replaceState({}, document.title, window.location.pathname);
+      })
+      .catch(err => console.warn("Auto sign-in from link failed:", err.message));
   }
 }
 
