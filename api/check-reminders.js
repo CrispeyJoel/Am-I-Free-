@@ -518,27 +518,18 @@ module.exports = async (req, res) => {
               )}.`;
 
 
-            await admin
-              .messaging()
-              .send({
-                token:
-                  user.pushToken,
-
+            await admin.messaging().send({
+              token: user.pushToken,
+              data: {
+                title,
+                body
+              },
+              webpush: {
                 notification: {
-                  title,
-                  body
-                },
-
-                webpush: {
-                  notification: {
-                    title,
-                    body,
-
-                    icon:
-                      "https://am-i-free-eta.vercel.app/icon-192.png"
-                  }
+                  icon: "https://am-i-free-eta.vercel.app/icon-192.png"
                 }
-              });
+              }
+            });
 
 
             // --------------------------------------------------

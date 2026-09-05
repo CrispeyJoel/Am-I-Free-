@@ -1,3 +1,4 @@
+```css
 :root {
   --bg: #F5F6F3;
   --surface: #FFFFFF;
@@ -8,13 +9,22 @@
   --accent-warm: #E4A94F;
   --gray-event: #C7CBC6;
   --danger: #B5563C;
+
+  /* New free-state colours */
+  --free-bg: #E8F5EC;
+  --free-ink: #245C38;
+  --free-dot: #5DBB78;
+
   --radius: 14px;
   font-size: 16px;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
-html, body {
+html,
+body {
   margin: 0;
   height: 100%;
   background: var(--bg);
@@ -22,9 +32,20 @@ html, body {
   font-family: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: contain;
-  /* Keeps content clear of the notch/status bar when running standalone
-     (added to home screen) — has no effect in a normal browser tab. */
+
+  /* Keeps content clear of the notch/status bar */
   padding-top: env(safe-area-inset-top);
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #app {
@@ -36,13 +57,16 @@ html, body {
   background: var(--bg);
 }
 
-/* ---- Top bar ---- */
+/* =========================================================
+   TOP BAR
+   ========================================================= */
+
 .topbar {
   position: sticky;
   top: 0;
   z-index: 20;
   background: var(--bg);
-  padding: 14px 16px 8px;
+  padding: 14px 16px 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -50,94 +74,178 @@ html, body {
 
 .topbar .weeklabel {
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   letter-spacing: -0.01em;
 }
+
+/* Larger icon buttons */
 
 .iconbtn {
   border: none;
   background: var(--surface);
   color: var(--accent);
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  font-size: 1.1rem;
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  border-radius: 12px;
+  font-size: 1.2rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
-.iconbtn:active { transform: scale(0.94); }
+
+.iconbtn:active {
+  transform: scale(0.94);
+  box-shadow: none;
+}
+
+/* =========================================================
+   VIEW TOGGLE
+   ========================================================= */
 
 .viewtoggle {
   display: flex;
   gap: 6px;
 }
+
 .viewtoggle button {
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--ink-soft);
-  font-size: 0.78rem;
-  padding: 6px 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 10px 14px;
+  min-height: 42px;
   border-radius: 999px;
+  transition: 0.15s ease;
 }
+
+.viewtoggle button:active {
+  transform: scale(0.96);
+}
+
 .viewtoggle button.active {
   background: var(--accent);
   color: white;
   border-color: var(--accent);
 }
 
-/* ---- Free-now banner ---- */
+/* =========================================================
+   FREE-NOW BANNER
+   ========================================================= */
+
 .freebanner {
-  margin: 4px 16px 10px;
-  padding: 12px 14px;
-  border-radius: var(--radius);
-  background: var(--accent);
-  color: white;
+  margin: 6px 16px 12px;
+  padding: 15px 16px;
+  min-height: 58px;
+  border-radius: 16px;
+
+  /* Much nicer than the black/navy block */
+  background: var(--free-bg);
+  color: var(--free-ink);
+
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-.freebanner .dot {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: #7FD79A;
-  flex: none;
-}
-.freebanner.busy .dot { background: var(--accent-warm); }
-.freebanner .text { font-size: 0.92rem; line-height: 1.3; }
-.freebanner .text b { font-weight: 700; }
+  gap: 12px;
 
-/* ---- Day pips ---- */
+  border: 1px solid rgba(93, 187, 120, 0.18);
+}
+
+.freebanner .dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--free-dot);
+  flex: none;
+  box-shadow: 0 0 0 4px rgba(93, 187, 120, 0.12);
+}
+
+.freebanner.busy {
+  background: #FFF4DF;
+  color: #76521D;
+  border-color: rgba(228, 169, 79, 0.2);
+}
+
+.freebanner.busy .dot {
+  background: var(--accent-warm);
+  box-shadow: 0 0 0 4px rgba(228, 169, 79, 0.12);
+}
+
+.freebanner .text {
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.freebanner .text b {
+  font-weight: 700;
+}
+
+/* =========================================================
+   DAY PIPS
+   ========================================================= */
+
 .daypips {
   display: flex;
   justify-content: space-between;
-  padding: 0 16px 10px;
+  padding: 0 12px 12px;
   gap: 4px;
 }
+
 .pip {
   flex: 1;
   border: none;
   background: transparent;
   color: var(--ink-soft);
-  padding: 6px 2px;
-  border-radius: 10px;
+
+  /* Larger touch target */
+  min-height: 58px;
+  padding: 7px 2px;
+
+  border-radius: 12px;
   font-size: 0.75rem;
+
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  justify-content: center;
+  gap: 3px;
+
+  transition: background 0.12s ease, transform 0.12s ease;
 }
-.pip .num { font-weight: 700; font-size: 0.95rem; color: var(--ink); }
+
+.pip:active {
+  transform: scale(0.95);
+}
+
+.pip .num {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
 .pip.today .num {
   background: var(--accent);
   color: white;
-  width: 26px; height: 26px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-}
-.pip.selected { background: var(--surface); }
 
-/* ---- Timeline ---- */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pip.selected {
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* =========================================================
+   TIMELINE
+   ========================================================= */
+
 .dayscroller {
   flex: 1;
   overflow-x: auto;
@@ -145,12 +253,15 @@ html, body {
   display: flex;
   -webkit-overflow-scrolling: touch;
 }
-.dayscroller::-webkit-scrollbar { display: none; }
+
+.dayscroller::-webkit-scrollbar {
+  display: none;
+}
 
 .daycol {
   flex: 0 0 100%;
   scroll-snap-align: start;
-  padding: 0 16px 100px;
+  padding: 0 16px 110px;
   position: relative;
 }
 
@@ -158,11 +269,13 @@ html, body {
   position: relative;
   border-top: 1px solid var(--line);
 }
+
 .hourrow {
   height: 56px;
   border-bottom: 1px solid var(--line);
   position: relative;
 }
+
 .hourrow .label {
   position: absolute;
   top: -8px;
@@ -175,50 +288,81 @@ html, body {
 
 .eventlayer {
   position: absolute;
-  top: 0; left: 44px; right: 0; bottom: 0;
+  top: 0;
+  left: 44px;
+  right: 0;
+  bottom: 0;
 }
 
 .buffer {
   position: absolute;
-  left: 4px; right: 4px;
+  left: 4px;
+  right: 4px;
+
   background-image: repeating-linear-gradient(
-    135deg, currentColor 0 4px, transparent 4px 8px
+    135deg,
+    currentColor 0 4px,
+    transparent 4px 8px
   );
+
   opacity: 0.35;
-  border-radius: 6px;
+  border-radius: 7px;
 }
 
 .event {
   position: absolute;
-  left: 4px; right: 4px;
-  border-radius: 8px;
-  padding: 5px 8px;
+  left: 4px;
+  right: 4px;
+
+  border-radius: 9px;
+  padding: 7px 9px;
+
   color: white;
-  font-size: 0.78rem;
-  line-height: 1.15;
+  font-size: 0.8rem;
+  line-height: 1.2;
+
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
+
 .event.optional {
   background: var(--gray-event) !important;
   color: var(--ink);
   border-left: 5px solid;
 }
-.event .title { font-weight: 700; }
-.event .meta { opacity: 0.85; font-size: 0.7rem; }
-.event .dollar { float: right; font-weight: 700; }
+
+.event .title {
+  font-weight: 700;
+}
+
+.event .meta {
+  opacity: 0.85;
+  font-size: 0.71rem;
+}
+
+.event .dollar {
+  float: right;
+  font-weight: 700;
+}
 
 .nowline {
   position: absolute;
-  left: 44px; right: 0;
+  left: 44px;
+  right: 0;
   height: 2px;
   background: var(--danger);
 }
+
 .nowline::before {
   content: "";
   position: absolute;
-  left: -4px; top: -3px;
-  width: 8px; height: 8px;
+  left: -4px;
+  top: -3px;
+
+  width: 8px;
+  height: 8px;
+
   border-radius: 50%;
   background: var(--danger);
 }
@@ -230,142 +374,361 @@ html, body {
   font-size: 0.9rem;
 }
 
-/* ---- Month view ---- */
+/* =========================================================
+   MONTH VIEW
+   ========================================================= */
+
 .monthgrid {
-  padding: 4px 16px 100px;
+  padding: 6px 14px 110px;
 }
+
 .monthhead {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   text-align: center;
-  font-size: 0.7rem;
+
+  font-size: 0.72rem;
   color: var(--ink-soft);
-  margin-bottom: 6px;
+
+  margin-bottom: 8px;
 }
+
 .monthbody {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
 }
+
 .monthday {
   aspect-ratio: 1;
-  border-radius: 10px;
+
+  min-height: 44px;
+
+  border-radius: 11px;
   background: var(--surface);
   border: none;
+
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding-top: 6px;
-  font-size: 0.8rem;
-  color: var(--ink);
-  gap: 4px;
-}
-.monthday.today { outline: 2px solid var(--accent); }
-.monthday.other { opacity: 0.35; }
-.monthday .dots { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; }
-.monthday .dots span { width: 5px; height: 5px; border-radius: 50%; }
 
-/* ---- Quick add bar ---- */
+  padding-top: 7px;
+
+  font-size: 0.82rem;
+  color: var(--ink);
+
+  gap: 4px;
+
+  transition: transform 0.1s ease;
+}
+
+.monthday:active {
+  transform: scale(0.94);
+}
+
+.monthday.today {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.monthday.other {
+  opacity: 0.35;
+}
+
+.monthday .dots {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.monthday .dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+/* =========================================================
+   QUICK ADD BAR
+   ========================================================= */
+
 .quickbar {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+
   max-width: 480px;
   margin: 0 auto;
+
   background: var(--surface);
   border-top: 1px solid var(--line);
+
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+
   display: flex;
-  gap: 8px;
+  gap: 9px;
+
   z-index: 30;
 }
+
 .quickbar input {
   flex: 1;
+
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 16px; /* iOS zooms in on focus for any input under 16px */
+  border-radius: 12px;
+
+  padding: 12px 14px;
+  min-height: 50px;
+
+  font-size: 16px;
+
   background: var(--bg);
   color: var(--ink);
 }
+
 .quickbar button {
   border: none;
   background: var(--accent);
   color: white;
-  width: 42px;
-  border-radius: 10px;
-  font-size: 1.1rem;
+
+  width: 52px;
+  min-width: 52px;
+  min-height: 50px;
+
+  border-radius: 12px;
+  font-size: 1.25rem;
+
+  transition: transform 0.12s ease;
 }
 
-/* ---- Modal ---- */
+.quickbar button:active {
+  transform: scale(0.94);
+}
+
+/* =========================================================
+   MODAL
+   ========================================================= */
+
 .overlay {
-  position: fixed; inset: 0;
-  background: rgba(20,24,22,0.45);
+  position: fixed;
+  inset: 0;
+
+  background: rgba(20, 24, 22, 0.45);
+
   display: flex;
   align-items: flex-end;
+
   z-index: 40;
 }
+
 .sheet {
   background: var(--surface);
+
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
-  border-radius: 20px 20px 0 0;
-  padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+
+  border-radius: 22px 22px 0 0;
+
+  padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+
   max-height: 88vh;
   overflow-y: auto;
 }
-.sheet h2 { margin: 0 0 12px; font-size: 1.05rem; }
-.field { margin-bottom: 12px; }
+
+.sheet h2 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
 .field label {
   display: block;
-  font-size: 0.75rem;
+
+  font-size: 0.76rem;
+  font-weight: 600;
   color: var(--ink-soft);
-  margin-bottom: 4px;
+
+  margin-bottom: 6px;
 }
-.field input[type=text], .field input[type=time], .field input[type=date],
-.field input[type=number], .field select {
+
+.field input[type=text],
+.field input[type=time],
+.field input[type=date],
+.field input[type=number],
+.field select {
   width: 100%;
-  padding: 10px;
+
+  min-height: 50px;
+
+  padding: 11px 12px;
+
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 12px;
+
   background: var(--bg);
   color: var(--ink);
-  font-size: 16px; /* iOS zooms in on focus for any input under 16px */
+
+  font-size: 16px;
 }
-.row2 { display: flex; gap: 10px; }
-.row2 .field { flex: 1; }
-.chiprow { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.row2 {
+  display: flex;
+  gap: 10px;
+}
+
+.row2 .field {
+  flex: 1;
+}
+
+/* =========================================================
+   CHIPS
+   ========================================================= */
+
+.chiprow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .chip {
   border: 1px solid var(--line);
   background: var(--bg);
-  padding: 7px 12px;
+
+  padding: 10px 14px;
+  min-height: 42px;
+
   border-radius: 999px;
+
   font-size: 0.82rem;
+
   display: flex;
   align-items: center;
   gap: 6px;
+
+  transition: transform 0.1s ease;
 }
-.chip .swatch { width: 10px; height: 10px; border-radius: 50%; }
-.chip.selected { border-color: var(--accent); background: rgba(34,51,59,0.06); font-weight: 700; }
+
+.chip:active {
+  transform: scale(0.95);
+}
+
+.chip .swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.chip.selected {
+  border-color: var(--accent);
+  background: rgba(34, 51, 59, 0.06);
+  font-weight: 700;
+}
+
+/* =========================================================
+   TOGGLES
+   ========================================================= */
+
 .togglerow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 2px;
+
+  padding: 13px 2px;
+
   border-bottom: 1px solid var(--line);
-  font-size: 0.88rem;
+
+  font-size: 0.9rem;
 }
-.togglerow input[type=checkbox] { width: 20px; height: 20px; }
-.sheetactions { display: flex; gap: 10px; margin-top: 16px; }
+
+.togglerow input[type=checkbox] {
+  width: 22px;
+  height: 22px;
+}
+
+/* =========================================================
+   MODAL BUTTONS
+   ========================================================= */
+
+.sheetactions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
 .btn {
   flex: 1;
+
   border: none;
-  padding: 12px;
-  border-radius: 12px;
-  font-size: 0.92rem;
+
+  min-height: 52px;
+  padding: 13px;
+
+  border-radius: 13px;
+
+  font-size: 0.94rem;
   font-weight: 600;
+
+  transition: transform 0.1s ease;
 }
-.btn.primary { background: var(--accent); color: white; }
-.btn.ghost { background: var(--bg); color: var(--ink); }
-.btn.danger { background: transparent; color: var(--danger); }
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn.primary {
+  background: var(--accent);
+  color: white;
+}
+
+.btn.ghost {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.btn.danger {
+  background: transparent;
+  color: var(--danger);
+}
+
+/* =========================================================
+   MOBILE-SPECIFIC IMPROVEMENTS
+   ========================================================= */
+
+@media (max-width: 480px) {
+  .topbar {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .freebanner {
+    margin-left: 14px;
+    margin-right: 14px;
+  }
+
+  .daycol {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .event {
+    left: 3px;
+    right: 3px;
+  }
+}
+
+/* =========================================================
+   LARGER SCREENS
+   ========================================================= */
+
+@media (min-width: 481px) {
+  #app {
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.04);
+  }
+}
+```

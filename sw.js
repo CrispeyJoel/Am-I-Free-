@@ -1,4 +1,5 @@
-const CACHE = "actually-free-v4";
+const CACHE = "actually-free-v5";
+
 const ASSETS = [
   "./",
   "./index.html",
@@ -10,16 +11,24 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
+  e.waitUntil(
+    caches.open(CACHE).then((c) => c.addAll(ASSETS))
+  );
+
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+      Promise.all(
+        keys
+          .filter((k) => k !== CACHE)
+          .map((k) => caches.delete(k))
+      )
     )
   );
+
   self.clients.claim();
 });
 
@@ -28,19 +37,26 @@ self.addEventListener("fetch", (e) => {
 
   if (
     e.request.method === "GET" &&
-    (url.pathname.endsWith(".js") ||
-     url.pathname.endsWith(".html") ||
-     url.pathname === "/")
+    (
+      url.pathname.endsWith(".js") ||
+      url.pathname.endsWith(".html") ||
+      url.pathname === "/"
+    )
   ) {
     e.respondWith(
       fetch(e.request)
         .then((response) => {
           const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(e.request, copy));
+
+          caches.open(CACHE).then((cache) => {
+            cache.put(e.request, copy);
+          });
+
           return response;
         })
         .catch(() => caches.match(e.request))
     );
+
     return;
   }
 
@@ -51,11 +67,18 @@ self.addEventListener("fetch", (e) => {
   );
 });
 
-/* ==== Firebase Cloud Messaging (background notifications) ====
-   Fill in the same FIREBASE_CONFIG values used at the top of app.js —
-   a service worker can't import app.js's module, so it's duplicated here. */
-importScripts("https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js");
+
+// ============================================================
+// FIREBASE CLOUD MESSAGING
+// ============================================================
+
+importScripts(
+  "https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"
+);
+
+importScripts(
+  "https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js"
+);
 
 firebase.initializeApp({
   apiKey: "AIzaSyD9GasWarxCefArgzbq2vPgSuYmlkTvPs0",
@@ -67,8 +90,13 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
+
 messaging.onBackgroundMessage((payload) => {
-  const title = (payload.notification && payload.notification.title) || "Actually Free";
-  const body = (payload.notification && payload.notification.body) || "";
-  self.registration.showNotification(title, { body, icon: "icon-192.png" });
+  const title = payload.data?.title || "Actually Free";
+  const body = payload.data?.body || "";
+
+  self.registration.showNotification(title, {
+    body,
+    icon: "icon-192.png"
+  });
 });

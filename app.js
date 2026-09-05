@@ -331,7 +331,7 @@ function renderMonth() {
 
 function renderQuickBar() {
   return `<div class="quickbar">
-    <input id="quickinput" type="text" placeholder="Quick add — e.g. Piano - Zach, Tue 4pm" />
+    <input id="quickinput" type="text" placeholder="Quick add" />
     <button id="quickadd" title="Add">+</button>
   </div>`;
 }
