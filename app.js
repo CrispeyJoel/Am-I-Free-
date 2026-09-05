@@ -3,13 +3,14 @@
    This file must be loaded as a <script type="module"> for the imports below to work. */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut
+  getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult,
+  onAuthStateChanged, signOut, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import {
-  getMessaging, getToken, isSupported as messagingSupported
+  getMessaging, getToken, deleteToken, isSupported as messagingSupported
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging.js";
 
 // ====== FILL THIS IN — Firebase console → Project settings → General → your web app config ======
