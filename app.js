@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+[source: 1]import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 
 import {
   getAuth,
@@ -9,7 +9,9 @@ import {
   onAuthStateChanged,
   signOut,
   setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  isSignInWithEmailLink,
+  signInWithEmailLink
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
 import {
@@ -195,7 +197,7 @@ function parseQuickAdd(text) {
         const target = DAY_ALIASES[key];
         const todayDow = new Date().getDay();
         let diff = (target - todayDow + 7) % 7;
-        if (diff === 0) diff = 7; // next occurrence, not today, when just a bare day name
+        if (diff === 0) diff = 7;
         dayOffset = diff;
         s = s.replace(re, "");
         break;
@@ -210,7 +212,7 @@ function parseQuickAdd(text) {
     const ap = timeMatch[3] ? timeMatch[3].toLowerCase() : null;
     if (ap === "pm" && h < 12) h += 12;
     if (ap === "am" && h === 12) h = 0;
-    if (!ap && h <= 7) h += 12; // bare small numbers -> assume afternoon
+    if (!ap && h <= 7) h += 12;
     time = h*60+m;
     s = s.replace(timeMatch[0], "");
   }
@@ -248,10 +250,8 @@ function roundToNext30() {
 function cleanAITitle(aiTitle, originalText) {
   let title = String(aiTitle || "").trim();
 
-  // Remove accidental surrounding punctuation/quotes.
   title = title.replace(/^[\s"'`]+|[\s"'`]+$/g, "");
 
-  // Never allow a title that is basically the whole spoken sentence.
   const original = String(originalText || "").trim();
   const originalWords = original.split(/\s+/).filter(Boolean);
   const titleWords = title.split(/\s+/).filter(Boolean);
@@ -266,7 +266,6 @@ function cleanAITitle(aiTitle, originalText) {
       .trim();
   }
 
-  // Strip common conversational fragments that sometimes leak into voice titles.
   title = title
     .replace(/^(okay|ok|uh|um|er|so|yeah|yep|please)\b[,:]?\s*/i, "")
     .replace(/\s+/g, " ")
@@ -275,7 +274,7 @@ function cleanAITitle(aiTitle, originalText) {
   return title || "Untitled";
 }
 
-/* ---------- Quick add parsing (AI, via Gemini through our backend) ---------- */
+/* ---------- Quick add parsing (AI) ---------- */
 async function parseQuickAddAI(text) {
   const res = await fetch("/api/parse-event", {
     method: "POST",
@@ -340,7 +339,6 @@ function renderTopbar() {
       <button class="iconbtn" data-act="next">›</button>
     </div>
 
-    <!-- Row 1: Today, Discrete Push Button, Sign In -->
     <div class="topbar-actions">
       <button class="todaybtn" data-act="today" title="Back to today">Today</button>
       
@@ -354,7 +352,6 @@ function renderTopbar() {
       </button>
     </div>
 
-    <!-- Row 2: Week / Month View Switcher -->
     <div class="topbar-view">
       <div class="viewtoggle">
         <button data-view="day" class="${view === "day" ? "active" : ""}">Week</button>
@@ -591,7 +588,7 @@ function attachHandlers() {
       if (act === "today") { weekStart = startOfWeek(new Date()); selectedDate = startOfDay(new Date()); monthCursor = startOfMonth(new Date()); render(); }
       if (act === "prev") { view === "month" ? shiftMonth(-1) : shiftWeek(-1); }
       if (act === "next") { view === "month" ? shiftMonth(1) : shiftWeek(1); }
-      if (act === "toggle-push") { toggleNotifications(); }// <--- ADD THIS LINE
+      if (act === "toggle-push") { toggleNotifications(); }
       if (act === "cloud") {
         if (!currentUser) signInCloud();
         else if (confirm(`Synced as ${currentUser.displayName||currentUser.email}. Sign out of cloud backup?`)) signOutCloud();
@@ -764,7 +761,6 @@ function openSheet(ev, isNew=false) {
         if (seriesWide) {
           events = events.filter(e=>e.id!==draft.id);
         } else {
-          // simplest instance-exception: shift recurrence anchor forward by one cycle from this date
           draft.dateISO = iso(addDays(new Date(draft.dateISO), draft.recurrence==="weekly"?7:14));
         }
       } else {
@@ -805,10 +801,6 @@ function openSheet(ev, isNew=false) {
 }
 
 /* ---------- Boot ---------- */
-
-let pushEnabled = false;
-let unsubscribeCloudData = null;
-let unsubscribeUserDoc = null;
 
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return null;
@@ -1190,7 +1182,6 @@ async function syncCloudData(user) {
 
     if (row) row.textContent = "Checking cloud calendar...";
 
-    // One-time backup protection. Never silently throw away local events.
     const localBackupKey = `af_local_backup_${user.uid}`;
     if (localEvents.length > 0) {
       localStorage.setItem(localBackupKey, JSON.stringify({
@@ -1200,13 +1191,11 @@ async function syncCloudData(user) {
       }));
     }
 
-    // The snapshot listener handles the actual merge/load below.
     if (unsubscribeCloudData) unsubscribeCloudData();
 
     unsubscribeCloudData = onSnapshot(dataRef, async snap => {
       try {
         if (!snap.exists()) {
-          // This is a brand-new cloud account. Upload the local calendar.
           await setDoc(dataRef, {
             list: localEvents,
             categories: localCategories,
@@ -1221,8 +1210,6 @@ async function syncCloudData(user) {
         const remoteEvents = Array.isArray(remote.list) ? remote.list : [];
         const remoteCategories = Array.isArray(remote.categories) ? remote.categories : null;
 
-        // If the cloud account has data, use it. If it is empty but local has data,
-        // keep the local data and upload it instead of deleting it.
         if (remoteEvents.length === 0 && localEvents.length > 0) {
           suppressNextCloudPush = true;
           events = localEvents;
@@ -1266,7 +1253,6 @@ async function loadPushState(user) {
       return;
     }
 
-    // Do not request permission here. The user must tap the notification button.
     const userRef = doc(db, "users", user.uid);
 
     if (unsubscribeUserDoc) unsubscribeUserDoc();
