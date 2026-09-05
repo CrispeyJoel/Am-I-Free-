@@ -932,25 +932,27 @@ button {
 }
 
 /* Discrete, Slim White Push Toggle Button */
+/* Slightly bigger slim push button */
 .pushbtn-slim {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 4px 10px;
-  font-size: 12px;
+  border-radius: 20px;       /* Scaled up from 16px */
+  padding: 6px 14px;          /* Increased from 4px 10px */
+  font-size: 13.5px;         /* Increased from 12px */
   font-weight: 500;
   color: #64748b;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;                  /* Increased spacing between dot and text */
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   transition: all 0.2s ease;
 }
 
+/* Slightly larger indicator dot */
 .pushbtn-slim .dot {
-  width: 6px;
-  height: 12px;
+  width: 8px;                /* Increased from 6px */
+  height: 8px;               /* Increased from 6px */
   border-radius: 50%;
   background-color: #cbd5e1;
 }
