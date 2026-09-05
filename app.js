@@ -145,7 +145,7 @@ function freeStatusNow() {
   return { busy:false, text:`Free for <b>${dur}</b> - next at ${minToLabel(next.start)}` };
 }
 
-/* ---------- Quick add parsing ---------- */
+/* ---------- Quick add parsing (local fallback) ---------- */
 function parseQuickAdd(text) {
   let s = text.trim();
   let dayOffset = null;
@@ -197,8 +197,8 @@ function parseQuickAdd(text) {
     dateISO: iso(date),
     start: time===null ? roundToNext30() : time,
     duration: 60,
-    bufferBefore: 30,
-    bufferAfter: 30,
+    bufferBefore: 0,
+    bufferAfter: 0,
     reminder: "30m",
     mandatory: true,
     earnsMoney: !!cat.earnsDefault,
@@ -209,6 +209,41 @@ function roundToNext30() {
   const now = new Date();
   let m = now.getHours()*60 + now.getMinutes();
   return Math.ceil(m/30)*30;
+}
+
+/* ---------- Quick add parsing (AI, via Gemini through our backend) ---------- */
+async function parseQuickAddAI(text) {
+  const res = await fetch("/api/parse-event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      todayISO: iso(new Date()),
+      categories: categories.map(c => ({ name: c.name, earnsDefault: !!c.earnsDefault }))
+    })
+  });
+  const data = await res.json().catch(()=>null);
+  if (!res.ok || !data || data.error) throw new Error((data && data.error) || "AI parse failed");
+
+  const cat = categories.find(c => c.name.toLowerCase() === (data.category || "").toLowerCase())
+    || categories[categories.length - 1];
+  const [hh, mm] = (data.time || "12:00").split(":").map(Number);
+
+  return {
+    id: uid(), seriesId: uid(),
+    title: data.title || "Untitled",
+    categoryId: cat.id,
+    dateISO: data.date || iso(new Date()),
+    start: (isNaN(hh) ? 12 : hh) * 60 + (isNaN(mm) ? 0 : mm),
+    duration: Number.isFinite(data.duration) ? data.duration : 60,
+    bufferBefore: Number.isFinite(data.bufferBefore) ? data.bufferBefore : 30,
+    bufferAfter: Number.isFinite(data.bufferAfter) ? data.bufferAfter : 30,
+    reminder: data.reminder || "30m",
+    mandatory: data.mandatory !== false,
+    earnsMoney: !!data.earnsMoney,
+    recurrence: data.recurrence || "none"
+  };
 }
 
 /* ---------- Rendering ---------- */
@@ -308,8 +343,30 @@ function renderMonth() {
 
 function renderQuickBar() {
   return `<div class="quickbar">
-    <input id="quickinput" type="text" placeholder="Quick add" />
-    <button id="quickadd" title="Add">+</button>
+    <input
+      id="quickinput"
+      type="text"
+      placeholder="Quick add"
+      autocomplete="off"
+    />
+
+    <button
+      id="voicebtn"
+      type="button"
+      title="Add event by voice"
+      aria-label="Add event by voice"
+    >
+      🎙
+    </button>
+
+    <button
+      id="quickadd"
+      type="button"
+      title="Add"
+      aria-label="Add event"
+    >
+      +
+    </button>
   </div>`;
 }
 
@@ -351,6 +408,77 @@ function tickNowLine() {
   }, 60000);
 }
 
+let voiceRecognition = null;
+let isRecording = false;
+
+function startVoiceInput() {
+  const SpeechRecognition =
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    alert("Voice input isn't supported on this browser.");
+    return;
+  }
+
+  if (isRecording) {
+    voiceRecognition?.stop();
+    return;
+  }
+
+  voiceRecognition = new SpeechRecognition();
+
+  voiceRecognition.lang = "en-AU";
+  voiceRecognition.continuous = false;
+  voiceRecognition.interimResults = false;
+  voiceRecognition.maxAlternatives = 1;
+
+  isRecording = true;
+
+  const button = document.getElementById("voicebtn");
+
+  if (button) {
+    button.classList.add("recording");
+    button.textContent = "Voice";
+  }
+
+  voiceRecognition.onresult = (event) => {
+    const transcript =
+      event.results[0][0].transcript.trim();
+
+    const input = document.getElementById("quickinput");
+
+    if (input) {
+      input.value = transcript;
+    }
+
+    submitQuickAdd();
+  };
+
+  voiceRecognition.onerror = (event) => {
+    console.error("Voice recognition error:", event.error);
+
+    if (event.error === "not-allowed") {
+      alert("Microphone permission was denied.");
+    }
+  };
+
+  voiceRecognition.onend = () => {
+    isRecording = false;
+
+    const button = document.getElementById("voicebtn");
+
+    if (button) {
+      button.classList.remove("recording");
+      button.textContent = "Voice";
+    }
+
+    voiceRecognition = null;
+  };
+
+  voiceRecognition.start();
+}
+
 /* ---------- Event handlers ---------- */
 function attachHandlers() {
   app.querySelectorAll("[data-act]").forEach(btn=>{
@@ -390,14 +518,36 @@ function attachHandlers() {
 
   const qa = document.getElementById("quickadd");
   const qi = document.getElementById("quickinput");
-  if (qa) qa.addEventListener("click", ()=> submitQuickAdd());
+  const voice = document.getElementById("voicebtn");
+
+  if (qa) {
+    qa.addEventListener("click", () => submitQuickAdd());
+  }
+
+  if (voice) {
+    voice.addEventListener("click", startVoiceInput);
+  }
   if (qi) qi.addEventListener("keydown", e=>{ if (e.key==="Enter") submitQuickAdd(); });
 }
 
-function submitQuickAdd() {
+async function submitQuickAdd() {
   const qi = document.getElementById("quickinput");
-  if (!qi.value.trim()) return;
-  const draft = parseQuickAdd(qi.value);
+  if (!qi || !qi.value.trim()) return;
+  const text = qi.value.trim();
+
+  const qa = document.getElementById("quickadd");
+  const originalLabel = qa ? qa.textContent : null;
+  if (qa) { qa.disabled = true; qa.textContent = "…"; }
+
+  let draft;
+  try {
+    draft = await parseQuickAddAI(text);
+  } catch (e) {
+    console.warn("AI parse unavailable, falling back to local parsing:", e.message);
+    draft = parseQuickAdd(text);
+  }
+
+  if (qa) { qa.disabled = false; qa.textContent = originalLabel; }
   openSheet(draft, true);
 }
 
@@ -410,8 +560,8 @@ function openSheet(ev, isNew=false) {
   const draft = isEdit ? ev : (ev || {
     id: uid(), seriesId: uid(), title:"", categoryId: categories[0].id,
     dateISO: iso(selectedDate), start: roundToNext30(), duration:60,
-    bufferBefore:30,
-    bufferAfter:30,
+    bufferBefore:0,
+    bufferAfter:0,
     reminder:"30m",
     mandatory:true,
     earnsMoney:false,
@@ -435,20 +585,39 @@ function openSheet(ev, isNew=false) {
         </div>
       </div>
       <div class="row2">
-        <div class="field"><label>Buffer before (min)</label><input type="number" id="f-bufbefore" value="${draft.bufferBefore}" min="0" step="5" /></div>
-        <div class="field"><label>Buffer after (min)</label><input type="number" id="f-bufafter" value="${draft.bufferAfter}" min="0" step="5" /></div>
+        <div class="field">
+          <label>Buffer before</label>
+          <select id="f-bufbefore">
+            ${[0,10,20,30,40,50,60,70,80,90,100,110,120].map(m => `
+              <option value="${m}" ${Number(draft.bufferBefore) === m ? "selected" : ""}>
+                ${m < 60 ? `${m} minutes` : `${Math.floor(m/60)} hour${m >= 120 ? "s" : ""}${m % 60 ? ` ${m % 60} minutes` : ""}`}
+              </option>
+            `).join("")}
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Buffer after</label>
+          <select id="f-bufafter">
+            ${[0,10,20,30,40,50,60,70,80,90,100,110,120].map(m => `
+              <option value="${m}" ${Number(draft.bufferAfter) === m ? "selected" : ""}>
+                ${m < 60 ? `${m} minutes` : `${Math.floor(m/60)} hour${m >= 120 ? "s" : ""}${m % 60 ? ` ${m % 60} minutes` : ""}`}
+              </option>
+            `).join("")}
+          </select>
+        </div>
       </div>
       <div class="field">
-        <label>Remind me</label>
+        <label>Remind me (minutes before leaving)(minutes )</label>
         <select id="f-reminder">
           <option value="none" ${draft.reminder === "none" ? "selected" : ""}>No reminder</option>
-          <option value="30m" ${(!draft.reminder || draft.reminder === "30m") ? "selected" : ""}>30 minutes before leaving</option>
-          <option value="1h" ${draft.reminder === "1h" ? "selected" : ""}>1 hour before leaving</option>
-          <option value="6h" ${draft.reminder === "6h" ? "selected" : ""}>6 hours before leaving</option>
-          <option value="12h" ${draft.reminder === "12h" ? "selected" : ""}>12 hours before leaving</option>
-          <option value="1d" ${draft.reminder === "1d" ? "selected" : ""}>1 day before leaving</option>
-          <option value="1w" ${draft.reminder === "1w" ? "selected" : ""}>1 week before leaving</option>
-          <option value="1mo" ${draft.reminder === "1mo" ? "selected" : ""}>1 month before leaving</option>
+          <option value="30m" ${(!draft.reminder || draft.reminder === "30m") ? "selected" : ""}>30 minutes</option>
+          <option value="1h" ${draft.reminder === "1h" ? "selected" : ""}>1 hour</option>
+          <option value="6h" ${draft.reminder === "6h" ? "selected" : ""}>6 hours</option>
+          <option value="12h" ${draft.reminder === "12h" ? "selected" : ""}>12 hours</option>
+          <option value="1d" ${draft.reminder === "1d" ? "selected" : ""}>1 day</option>
+          <option value="1w" ${draft.reminder === "1w" ? "selected" : ""}>1 week</option>
+          <option value="1mo" ${draft.reminder === "1mo" ? "selected" : ""}>1 month</option>
         </select>
       </div>
       <div class="field"><label>Repeats</label>
