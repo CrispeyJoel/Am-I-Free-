@@ -1,7 +1,3 @@
-// Turns a typed or spoken sentence into a structured event using Google's
-// free Gemini API. The key lives only in this server-side function (env var
-// GEMINI_API_KEY) — it never reaches the browser.
-
 const DEFAULT_CATEGORIES = [
   { name: "Work", earnsDefault: true },
   { name: "Tutoring", earnsDefault: true },
@@ -11,138 +7,178 @@ const DEFAULT_CATEGORIES = [
 ];
 
 const RESPONSE_SCHEMA = {
-  type: "OBJECT",
+  type: "object",
   properties: {
     title: {
-      type: "STRING",
-      description: "A short, clean, human-readable event name — just the activity/person, e.g. 'Piano lesson with Zach', 'Team meeting', 'Dentist appointment'. NEVER include times, dates, day names, or filler/connector words like 'schedule', 'at', 'for', 'on', 'o'clock'."
+      type: "string",
+      description:
+        "The shortest useful name for the event. Use 2 to 8 words. Describe only the activity, task, place, or person. Never include the date, weekday, time, duration, reminder, travel information, or conversational filler. Never copy the user's whole sentence."
     },
-    date: { type: "STRING", description: "YYYY-MM-DD" },
-    time: { type: "STRING", description: "24-hour HH:MM, best guess if not stated" },
-    duration: { type: "INTEGER", description: "minutes" },
-    category: { type: "STRING" },
-    bufferBefore: { type: "INTEGER", description: "minutes of travel buffer before the event" },
-    bufferAfter: { type: "INTEGER", description: "minutes of travel buffer after the event" },
-    mandatory: { type: "BOOLEAN" },
-    earnsMoney: { type: "BOOLEAN" },
-    recurrence: { type: "STRING", enum: ["none", "weekly", "fortnightly"] },
-    reminder: { type: "STRING", enum: ["none", "30m", "1h", "6h", "12h", "1d", "1w", "1mo"] }
+    date: {
+      type: "string",
+      description: "Event date in YYYY-MM-DD format."
+    },
+    time: {
+      type: "string",
+      description: "Event start time in 24-hour HH:MM format."
+    },
+    duration: {
+      type: "integer",
+      description: "Event duration in minutes."
+    },
+    category: {
+      type: "string",
+      description: "One of the available category names."
+    },
+    bufferBefore: {
+      type: "integer",
+      description: "Travel/preparation buffer before the event in minutes."
+    },
+    bufferAfter: {
+      type: "integer",
+      description: "Travel/recovery buffer after the event in minutes."
+    },
+    mandatory: {
+      type: "boolean",
+      description: "Whether the event is mandatory."
+    },
+    earnsMoney: {
+      type: "boolean",
+      description: "Whether the event earns money."
+    },
+    recurrence: {
+      type: "string",
+      enum: ["none", "weekly", "fortnightly"]
+    },
+    reminder: {
+      type: "string",
+      enum: ["none", "30m", "1h", "6h", "12h", "1d", "1w", "1mo"]
+    }
   },
   required: [
-    "title", "date", "time", "duration", "category",
-    "bufferBefore", "bufferAfter", "mandatory", "earnsMoney", "recurrence", "reminder"
+    "title",
+    "date",
+    "time",
+    "duration",
+    "category",
+    "bufferBefore",
+    "bufferAfter",
+    "mandatory",
+    "earnsMoney",
+    "recurrence",
+    "reminder"
   ]
 };
 
-export default async function handler(req, res) {
+function cleanTitle(title, input) {
+  let value = String(title || "").trim();
+  const original = String(input || "").trim();
+
+  value = value
+    .replace(/^[\s"'`]+|[\s"'`]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const words = value.split(/\s+/).filter(Boolean);
+  const originalWords = original.split(/\s+/).filter(Boolean);
+
+  // Gemini occasionally returns the entire spoken sentence despite the schema.
+  // Reject that output and derive a short fallback from the input.
+  const looksLikeWholeSentence =
+    !value ||
+    words.length > 8 ||
+    (originalWords.length >= 8 && words.length >= originalWords.length * 0.75);
+
+  if (looksLikeWholeSentence) {
+    value = original
+      .replace(/\b(?:please|could you|can you|would you|i want to|i need to|remind me to|remind me|schedule|add|create|book|put|set up)\b/gi, "")
+      .replace(/\b(?:today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)\b/gi, "")
+      .replace(/\b(?:at|around|by)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?\b/gi, "")
+      .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/gi, "")
+      .replace(/\s+/g, " ")
+      .replace(/^[,\-–:;\s]+|[,\-–:;\s]+$/g, "")
+      .trim();
+  }
+
+  // Remove conversational fragments that sometimes survive transcription.
+  value = value
+    .replace(/^(?:okay|ok|uh|um|er|so|yeah|yep|please)[,:]?\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const finalWords = value.split(/\s+/).filter(Boolean);
+  if (finalWords.length > 8) {
+    value = finalWords.slice(0, 8).join(" ");
+  }
+
+  return value || "Untitled";
+}
+
+module.exports = async (req, res) => {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "method not allowed" });
   }
 
-  let body = req.body;
-  if (typeof body === "string") {
-    try { body = JSON.parse(body); } catch (e) {}
-  }
+  const { text, timezone, todayISO, categories } = req.body || {};
 
-  const { text, timezone, todayISO, categories } = body || {};
-  if (!text || !text.trim()) {
+  if (!text || !String(text).trim()) {
     return res.status(400).json({ error: "missing text" });
   }
+
   if (!process.env.GEMINI_API_KEY) {
     return res.status(500).json({ error: "GEMINI_API_KEY is not set" });
   }
 
-  const catList = Array.isArray(categories) && categories.length ? categories : DEFAULT_CATEGORIES;
+  const catList =
+    Array.isArray(categories) && categories.length
+      ? categories
+      : DEFAULT_CATEGORIES;
+
   const catDescriptions = catList
     .map(c => `${c.name} (earns money by default: ${!!c.earnsDefault})`)
     .join(", ");
 
-  const prompt = `You turn a spoken or typed sentence into a calendar event for a personal scheduling app.
+  const input = String(text).trim();
+  const today = todayISO || new Date().toISOString().slice(0, 10);
+  const tz = timezone || "Australia/Sydney";
 
-    Today's date is ${todayISO || new Date().toISOString().slice(0, 10)} in timezone ${timezone || "Australia/Sydney"}.
+  const prompt = `You are the event parser for a personal calendar app.
 
-    Resolve relative dates such as "tomorrow", "next Tuesday", and "Friday" against today's date.
+Convert the user's spoken or typed sentence into exactly one calendar event.
 
-    Categories available: ${catDescriptions}.
-    Pick the closest matching category.
-    Default to "Personal" if nothing fits.
+Today's date is ${today} in timezone ${tz}.
+Resolve relative dates such as "tomorrow", "next Tuesday", and "Friday" from that date. A bare weekday means the next occurrence.
 
-    DEFAULTS:
-    - Duration: 60 minutes unless stated.
-    - Travel buffer: 30 minutes before and 30 minutes after.
-    - If the user says "no buffer", "no travel time", etc., use 0.
-    - Mandatory: true unless the user clearly says it is optional or flexible.
-    - Reminder: 30m unless another reminder time is explicitly stated.
+Available categories: ${catDescriptions}.
+Choose the closest category. Use Personal if nothing fits.
 
-    TITLE EXTRACTION IS EXTREMELY IMPORTANT.
+Defaults:
+- duration: 60 minutes
+- bufferBefore: 30 minutes
+- bufferAfter: 30 minutes
+- mandatory: true
+- reminder: 30m
+- recurrence: none
 
-    The title must contain ONLY the actual activity, appointment, task, or person involved.
+TITLE RULES ARE CRITICAL:
+- title must be ONLY the core event name.
+- title must contain 2 to 8 words where possible.
+- NEVER include a time, date, weekday, duration, reminder, buffer, or travel instruction.
+- NEVER include words such as schedule, add, create, book, remind me, at, on, tomorrow, today, next, or o'clock when they are only instructions.
+- NEVER copy the whole user sentence into title.
+- Ignore speech-to-text filler such as "um", "uh", "okay", "so", and "please".
+- If the user says "Schedule piano lesson with Zach next Tuesday at 4pm", title must be "Piano lesson with Zach".
+- If the user says "Can you put dentist appointment tomorrow at nine", title must be "Dentist appointment".
+- If the user says "I have tutoring with Sarah at 5", title must be "Tutoring with Sarah".
+- If the user says "Go to the gym Friday at 6", title must be "Gym".
 
-    The title must NEVER contain:
-    - dates
-    - days of the week
-    - times
-    - "at"
-    - "on"
-    - "for"
-    - "tomorrow"
-    - "today"
-    - "next week"
-    - "schedule"
-    - "calendar"
-    - "remind me"
-    - "put in"
-    - "add"
-    - "book"
-    - "please"
-    - "can you"
-    - "I need to"
-    - "I have to"
-    - conversational filler
-    - instructions to the assistant
-    - the entire original sentence
+Return only the structured JSON matching the response schema.
 
-    Treat the input as a voice transcription, not as text that should be copied.
-
-    Extract the smallest natural phrase that describes the event.
-
-    For example:
-
-    "can you put piano lesson with Zach into my calendar tomorrow at four"
-    TITLE = "Piano lesson with Zach"
-
-    "hey can you add work Friday at 9am"
-    TITLE = "Work"
-
-    "please remind me that I have a dentist appointment next Tuesday at 10"
-    TITLE = "Dentist appointment"
-
-    "uh can you put dinner with Sarah in for Saturday at seven"
-    TITLE = "Dinner with Sarah"
-
-    "I need to pick up the dry cleaning tomorrow at five"
-    TITLE = "Pick up dry cleaning"
-
-    "schedule my tutoring session with James at 4pm"
-    TITLE = "Tutoring session with James"
-
-    "can you add a meeting with John from work at 2"
-    TITLE = "Meeting with John"
-
-    If the sentence contains a long conversational introduction, completely ignore that introduction.
-
-    Do NOT copy the sentence into the title.
-
-    Do NOT include more information than necessary.
-
-    If you are uncertain, prefer a short title over a long title.
-
-    Sentence:
-    "${text.trim()}"`;
+User sentence: ${JSON.stringify(input)}`;
 
   try {
     const geminiRes = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
       {
         method: "POST",
         headers: {
@@ -153,28 +189,54 @@ export default async function handler(req, res) {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             responseMimeType: "application/json",
-            responseSchema: RESPONSE_SCHEMA
+            responseSchema: RESPONSE_SCHEMA,
+            temperature: 0.1
           }
         })
       }
     );
 
     const data = await geminiRes.json();
+
     if (!geminiRes.ok) {
-      return res.status(502).json({ error: (data.error && data.error.message) || "Gemini request failed" });
+      return res.status(502).json({
+        error:
+          (data.error && data.error.message) ||
+          "Gemini request failed"
+      });
     }
 
-    const raw = data.candidates && data.candidates[0] && data.candidates[0].content
-      && data.candidates[0].content.parts && data.candidates[0].content.parts[0]
-      && data.candidates[0].content.parts[0].text;
+    const raw =
+      data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!raw) {
-      return res.status(502).json({ error: "No content returned from Gemini" });
+      return res.status(502).json({
+        error: "No content returned from Gemini"
+      });
     }
 
     const parsed = JSON.parse(raw);
+    parsed.title = cleanTitle(parsed.title, input);
+
+    // Clamp obviously broken numeric values before returning them to the app.
+    parsed.duration = Math.min(
+      1440,
+      Math.max(5, Number(parsed.duration) || 60)
+    );
+
+    parsed.bufferBefore = Math.min(
+      180,
+      Math.max(0, Number(parsed.bufferBefore) || 0)
+    );
+
+    parsed.bufferAfter = Math.min(
+      180,
+      Math.max(0, Number(parsed.bufferAfter) || 0)
+    );
+
     return res.status(200).json(parsed);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("Gemini event parsing failed:", error);
+    return res.status(500).json({ error: error.message });
   }
-}
+};

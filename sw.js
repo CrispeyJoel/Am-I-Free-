@@ -1,4 +1,4 @@
-const CACHE = "actually-free-v5";
+const CACHE = "actually-free-v6";
 
 const ASSETS = [
   "./",
@@ -10,67 +10,59 @@ const ASSETS = [
   "./icon-512.png"
 ];
 
-self.addEventListener("install", (e) => {
-  e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(ASSETS))
+self.addEventListener("install", event => {
+  event.waitUntil(
+    caches.open(CACHE).then(cache => cache.addAll(ASSETS))
   );
-
   self.skipWaiting();
 });
 
-self.addEventListener("activate", (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) =>
+self.addEventListener("activate", event => {
+  event.waitUntil(
+    caches.keys().then(keys =>
       Promise.all(
         keys
-          .filter((k) => k !== CACHE)
-          .map((k) => caches.delete(k))
+          .filter(key => key !== CACHE)
+          .map(key => caches.delete(key))
       )
     )
   );
-
   self.clients.claim();
 });
 
-self.addEventListener("fetch", (e) => {
-  const url = new URL(e.request.url);
+self.addEventListener("fetch", event => {
+  const request = event.request;
+  const url = new URL(request.url);
 
+  if (request.method !== "GET") return;
+
+  // HTML and JavaScript must always prefer the network after a deployment.
+  // The cache remains a fallback if the network is unavailable.
   if (
-    e.request.method === "GET" &&
-    (
-      url.pathname.endsWith(".js") ||
-      url.pathname.endsWith(".html") ||
-      url.pathname === "/"
-    )
+    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".html") ||
+    url.pathname === "/"
   ) {
-    e.respondWith(
-      fetch(e.request)
-        .then((response) => {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
           const copy = response.clone();
-
-          caches.open(CACHE).then((cache) => {
-            cache.put(e.request, copy);
-          });
-
+          caches.open(CACHE).then(cache => cache.put(request, copy));
           return response;
         })
-        .catch(() => caches.match(e.request))
+        .catch(() => caches.match(request))
     );
-
     return;
   }
 
-  e.respondWith(
-    caches.match(e.request).then(
-      (cached) => cached || fetch(e.request)
-    )
+  event.respondWith(
+    caches.match(request).then(cached => cached || fetch(request))
   );
 });
 
-
-// ============================================================
-// FIREBASE CLOUD MESSAGING
-// ============================================================
+/* ============================================================
+   FIREBASE CLOUD MESSAGING
+   ============================================================ */
 
 importScripts(
   "https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"
@@ -91,12 +83,20 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
-  const title = payload.data?.title || "Actually Free";
-  const body = payload.data?.body || "";
+messaging.onBackgroundMessage(payload => {
+  const title =
+    payload.data?.title ||
+    payload.notification?.title ||
+    "Actually Free";
+
+  const body =
+    payload.data?.body ||
+    payload.notification?.body ||
+    "";
 
   self.registration.showNotification(title, {
     body,
-    icon: "icon-192.png"
+    icon: "./icon-192.png",
+    badge: "./icon-192.png"
   });
 });

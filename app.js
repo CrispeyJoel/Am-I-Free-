@@ -4,7 +4,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
   getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink,
-  onAuthStateChanged, signOut
+  onAuthStateChanged, signOut, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, onSnapshot
@@ -28,6 +28,9 @@ const VAPID_PUBLIC_KEY = "BFXiYQnuOx5YnxnSs_6hbwYScOzo0V8brVdsOAzGNOVBhWh_9XfPn6
 
 const fbApp = initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(fbApp);
+setPersistence(auth, browserLocalPersistence).catch(err => {
+  console.error("Firebase auth persistence setup failed:", err);
+});
 const db = getFirestore(fbApp);
 let currentUser = null;
 let suppressNextCloudPush = false; // avoids re-saving the instant a remote update arrives
@@ -59,12 +62,24 @@ function load(key, fallback) {
   try { const v = JSON.parse(localStorage.getItem(key)); return v || fallback; }
   catch { return fallback; }
 }
-function save() {
+async function save() {
   localStorage.setItem("af_events", JSON.stringify(events));
   localStorage.setItem("af_categories", JSON.stringify(categories));
+
   if (currentUser && !suppressNextCloudPush) {
-    setDoc(doc(db, "users", currentUser.uid, "data", "events"), { list: events, categories }).catch(()=>{});
+    try {
+      await setDoc(
+        doc(db, "users", currentUser.uid, "data", "events"),
+        { list: events, categories, updatedAt: Date.now() },
+        { merge: true }
+      );
+    } catch (error) {
+      console.error("Cloud save failed:", error);
+      const row = document.getElementById("cloudstatus");
+      if (row) row.textContent = "Cloud save failed. Check your connection.";
+    }
   }
+
   suppressNextCloudPush = false;
 }
 function startOfDay(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
@@ -212,6 +227,36 @@ function roundToNext30() {
   return Math.ceil(m/30)*30;
 }
 
+function cleanAITitle(aiTitle, originalText) {
+  let title = String(aiTitle || "").trim();
+
+  // Remove accidental surrounding punctuation/quotes.
+  title = title.replace(/^[\s"'`]+|[\s"'`]+$/g, "");
+
+  // Never allow a title that is basically the whole spoken sentence.
+  const original = String(originalText || "").trim();
+  const originalWords = original.split(/\s+/).filter(Boolean);
+  const titleWords = title.split(/\s+/).filter(Boolean);
+
+  if (!title || titleWords.length > 12 || (originalWords.length > 0 && titleWords.length >= Math.max(12, originalWords.length * 0.8))) {
+    title = original
+      .replace(/\b(schedule|add|create|put|book|set up|remind me to|remind me|please|can you|could you)\b/gi, "")
+      .replace(/\b(today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)\b/gi, "")
+      .replace(/\b(?:at|around|by)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?\b/gi, "")
+      .replace(/\s+/g, " ")
+      .replace(/^[,\-–:;\s]+|[,\-–:;\s]+$/g, "")
+      .trim();
+  }
+
+  // Strip common conversational fragments that sometimes leak into voice titles.
+  title = title
+    .replace(/^(okay|ok|uh|um|er|so|yeah|yep|please)\b[,:]?\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return title || "Untitled";
+}
+
 /* ---------- Quick add parsing (AI, via Gemini through our backend) ---------- */
 async function parseQuickAddAI(text) {
   const res = await fetch("/api/parse-event", {
@@ -233,7 +278,7 @@ async function parseQuickAddAI(text) {
 
   return {
     id: uid(), seriesId: uid(),
-    title: data.title || "Untitled",
+    title: cleanAITitle(data.title, text),
     categoryId: cat.id,
     dateISO: data.date || iso(new Date()),
     start: (isNaN(hh) ? 12 : hh) * 60 + (isNaN(mm) ? 0 : mm),
@@ -742,146 +787,319 @@ function openSheet(ev, isNew=false) {
 }
 
 /* ---------- Boot ---------- */
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", ()=> navigator.serviceWorker.register("./sw.js").catch(()=>{}));
-}
 
-async function signInCloud() {
-  const savedEmail = window.localStorage.getItem("af_email_for_signin");
-  const email = prompt("Enter your email to sign in / back up your calendar:", savedEmail || "");
-  if (!email) return;
-  window.localStorage.setItem("af_email_for_signin", email);
+let pushEnabled = false;
+let unsubscribeCloudData = null;
+let unsubscribeUserDoc = null;
+
+async function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return null;
 
   try {
-    await sendSignInLinkToEmail(auth, email, {
+    const registration = await navigator.serviceWorker.register("./sw.js", {
+      updateViaCache: "none"
+    });
+
+    try {
+      await registration.update();
+    } catch (error) {
+      console.warn("Service worker update check failed:", error);
+    }
+
+    return registration;
+  } catch (error) {
+    console.error("Service worker registration failed:", error);
+    return null;
+  }
+}
+
+window.addEventListener("load", registerServiceWorker);
+
+async function signInCloud() {
+  const savedEmail = localStorage.getItem("af_email_for_signin") || "";
+  const email = prompt("Enter your email:", savedEmail);
+  if (!email) return;
+
+  const cleanEmail = email.trim().toLowerCase();
+  localStorage.setItem("af_email_for_signin", cleanEmail);
+
+  try {
+    await sendSignInLinkToEmail(auth, cleanEmail, {
       url: window.location.origin + window.location.pathname,
       handleCodeInApp: true
     });
-  } catch (err) {
-    alert("Couldn't send the sign-in email: " + err.message);
-    return;
-  }
 
-  const link = prompt("Check your email for a sign-in link. Copy the ENTIRE link and paste it here:", "");
-  if (!link) return;
-
-  if (!isSignInWithEmailLink(auth, link)) {
-    alert("That doesn't look like a valid sign-in link — make sure you copied the whole thing.");
-    return;
-  }
-
-  try {
-    await signInWithEmailLink(auth, email, link);
-  } catch (err) {
-    alert("Sign-in failed: " + err.message);
+    alert("Sign-in link sent. Open the email on this device and tap the link.");
+  } catch (error) {
+    console.error("Email sign-in failed:", error);
+    alert("Couldn't send the sign-in email: " + error.message);
   }
 }
-function signOutCloud() { signOut(auth); }
 
-let pushEnabled = false;
+function signOutCloud() {
+  signOut(auth).catch(error => {
+    console.error("Sign out failed:", error);
+  });
+}
 
 async function toggleNotifications() {
   if (!currentUser) {
-    alert("Please sign in first to manage push notifications.");
+    alert("Please sign in first to manage notifications.");
     return;
   }
 
-  // TURN OFF: If currently enabled, clear token from Firestore
   if (pushEnabled) {
     try {
-      await setDoc(doc(db, "users", currentUser.uid), { 
+      const messaging = getMessaging(fbApp);
+      await deleteToken(messaging).catch(error => {
+        console.warn("FCM token deletion failed:", error);
+      });
+
+      await setDoc(doc(db, "users", currentUser.uid), {
         pushToken: null,
+        pushEnabled: false,
         updatedAt: Date.now()
       }, { merge: true });
 
-      const messaging = getMessaging(fbApp);
-      await deleteToken(messaging).catch(() => {});
-
       pushEnabled = false;
       render();
-    } catch (e) {
-      console.error("Failed to disable notifications:", e);
+    } catch (error) {
+      console.error("Failed to disable notifications:", error);
+      alert("Couldn't disable notifications: " + error.message);
     }
     return;
   }
 
-  // TURN ON: Enable notifications
   await enableNotifications();
 }
 
 async function enableNotifications() {
   try {
-    if (!("Notification" in window)) return;
-
-    let perm = Notification.permission;
-    if (perm !== "granted") {
-      perm = await Notification.requestPermission();
+    if (!("Notification" in window)) {
+      alert("This browser does not support web notifications.");
+      return;
     }
 
-    if (perm !== "granted") {
-      alert("Notification permission was denied in browser settings.");
+    if (!("serviceWorker" in navigator)) {
+      alert("This browser does not support service workers.");
+      return;
+    }
+
+    const supported = await messagingSupported();
+    if (!supported) {
+      alert("Push notifications are not supported in this browser or app mode.");
+      return;
+    }
+
+    let permission = Notification.permission;
+
+    if (permission === "denied") {
+      alert("Notifications are blocked for this website. Enable notifications for Actually Free in Safari settings, then try again.");
+      return;
+    }
+
+    if (permission !== "granted") {
+      permission = await Notification.requestPermission();
+    }
+
+    if (permission !== "granted") {
       pushEnabled = false;
       render();
       return;
     }
 
-    const reg = await navigator.serviceWorker.register("./sw.js");
-    await navigator.serviceWorker.ready;
-
-    const messaging = getMessaging(fbApp);
-    const token = await getToken(messaging, { 
-      vapidKey: VAPID_PUBLIC_KEY, 
-      serviceWorkerRegistration: reg 
-    });
-
-    if (token && currentUser) {
-      await setDoc(doc(db, "users", currentUser.uid), { 
-        pushToken: token,
-        updatedAt: Date.now()
-      }, { merge: true });
-      
-      pushEnabled = true;
+    const registration = await registerServiceWorker();
+    if (!registration) {
+      alert("The notification service could not start. Please reload the app and try again.");
+      return;
     }
 
-    render();
-  } catch (e) {
-    console.error("Push setup failed:", e);
-  }
-}
+    const messaging = getMessaging(fbApp);
+    const token = await getToken(messaging, {
+      vapidKey: VAPID_PUBLIC_KEY,
+      serviceWorkerRegistration: registration
+    });
 
-if (isSignInWithEmailLink(auth, window.location.href)) {
-  const savedEmail = window.localStorage.getItem("af_email_for_signin");
-  if (savedEmail) {
-    signInWithEmailLink(auth, savedEmail, window.location.href)
-      .then(() => {
-        window.localStorage.removeItem("af_email_for_signin");
-        window.history.replaceState({}, document.title, window.location.pathname);
-      })
-      .catch(err => console.warn("Auto sign-in from link failed:", err.message));
-  }
-}
+    if (!token) {
+      throw new Error("Firebase did not return a notification token.");
+    }
 
-onAuthStateChanged(auth, (user) => {
-  currentUser = user;
-  if (user) {
-    setDoc(doc(db, "users", user.uid), {
+    await setDoc(doc(db, "users", currentUser.uid), {
+      pushToken: token,
+      pushEnabled: true,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       updatedAt: Date.now()
     }, { merge: true });
 
-    onSnapshot(doc(db, "users", user.uid), (snap) => {
-      if (snap.exists() && snap.data().pushToken) {
-        pushEnabled = true;
-      } else {
-        pushEnabled = false;
+    pushEnabled = true;
+    render();
+  } catch (error) {
+    console.error("Push setup failed:", error);
+    alert("Push setup failed: " + error.message);
+  }
+}
+
+async function handleEmailLinkSignIn() {
+  if (!isSignInWithEmailLink(auth, window.location.href)) return;
+
+  let email = localStorage.getItem("af_email_for_signin");
+
+  if (!email) {
+    email = prompt("Confirm your email address to finish signing in:", "");
+  }
+
+  if (!email) return;
+
+  try {
+    await signInWithEmailLink(auth, email.trim().toLowerCase(), window.location.href);
+    localStorage.setItem("af_email_for_signin", email.trim().toLowerCase());
+    window.history.replaceState({}, document.title, window.location.pathname);
+  } catch (error) {
+    console.error("Email-link sign-in failed:", error);
+    alert("Sign-in failed: " + error.message);
+  }
+}
+
+async function syncCloudData(user) {
+  const dataRef = doc(db, "users", user.uid, "data", "events");
+  const row = document.getElementById("cloudstatus");
+
+  try {
+    const localEvents = Array.isArray(events) ? events : [];
+    const localCategories = Array.isArray(categories) ? categories : DEFAULT_CATEGORIES;
+
+    if (row) row.textContent = "Checking cloud calendar...";
+
+    // One-time backup protection. Never silently throw away local events.
+    const localBackupKey = `af_local_backup_${user.uid}`;
+    if (localEvents.length > 0) {
+      localStorage.setItem(localBackupKey, JSON.stringify({
+        list: localEvents,
+        categories: localCategories,
+        savedAt: Date.now()
+      }));
+    }
+
+    // The snapshot listener handles the actual merge/load below.
+    if (unsubscribeCloudData) unsubscribeCloudData();
+
+    unsubscribeCloudData = onSnapshot(dataRef, async snap => {
+      try {
+        if (!snap.exists()) {
+          // This is a brand-new cloud account. Upload the local calendar.
+          await setDoc(dataRef, {
+            list: localEvents,
+            categories: localCategories,
+            updatedAt: Date.now()
+          });
+
+          if (row) row.textContent = `Calendar backed up as ${user.email || "your account"}`;
+          return;
+        }
+
+        const remote = snap.data() || {};
+        const remoteEvents = Array.isArray(remote.list) ? remote.list : [];
+        const remoteCategories = Array.isArray(remote.categories) ? remote.categories : null;
+
+        // If the cloud account has data, use it. If it is empty but local has data,
+        // keep the local data and upload it instead of deleting it.
+        if (remoteEvents.length === 0 && localEvents.length > 0) {
+          suppressNextCloudPush = true;
+          events = localEvents;
+          categories = localCategories;
+
+          await setDoc(dataRef, {
+            list: events,
+            categories,
+            updatedAt: Date.now()
+          }, { merge: true });
+        } else {
+          suppressNextCloudPush = true;
+          events = remoteEvents;
+          if (remoteCategories) categories = remoteCategories;
+
+          localStorage.setItem("af_events", JSON.stringify(events));
+          localStorage.setItem("af_categories", JSON.stringify(categories));
+        }
+
+        if (row) row.textContent = `Synced as ${user.email || "your account"}`;
+        render();
+      } catch (error) {
+        console.error("Cloud calendar sync failed:", error);
+        if (row) row.textContent = "Cloud calendar sync failed";
       }
+    }, error => {
+      console.error("Cloud calendar listener failed:", error);
+      if (row) row.textContent = "Cloud calendar unavailable";
+    });
+  } catch (error) {
+    console.error("Cloud sync setup failed:", error);
+    if (row) row.textContent = "Cloud sync failed";
+  }
+}
+
+async function loadPushState(user) {
+  try {
+    const supported = "Notification" in window && await messagingSupported();
+    if (!supported) {
+      pushEnabled = false;
+      return;
+    }
+
+    // Do not request permission here. The user must tap the notification button.
+    const userRef = doc(db, "users", user.uid);
+
+    if (unsubscribeUserDoc) unsubscribeUserDoc();
+
+    unsubscribeUserDoc = onSnapshot(userRef, snap => {
+      pushEnabled = !!(snap.exists() && snap.data().pushToken);
+      render();
+    }, error => {
+      console.error("Push state listener failed:", error);
+      pushEnabled = Notification.permission === "granted";
       render();
     });
-
-    enableNotifications();
+  } catch (error) {
+    console.error("Push state check failed:", error);
+    pushEnabled = false;
   }
-  const row = document.getElementById("cloudstatus");
-  if (row) row.textContent = user ? `Synced as ${user.displayName || user.email}` : "Not connected";
-});
+}
 
+async function handleAuthChange(user) {
+  currentUser = user;
+
+  if (unsubscribeCloudData) {
+    unsubscribeCloudData();
+    unsubscribeCloudData = null;
+  }
+
+  if (unsubscribeUserDoc) {
+    unsubscribeUserDoc();
+    unsubscribeUserDoc = null;
+  }
+
+  if (!user) {
+    pushEnabled = false;
+    render();
+    return;
+  }
+
+  try {
+    await setDoc(doc(db, "users", user.uid), {
+      email: user.email || null,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      updatedAt: Date.now()
+    }, { merge: true });
+
+    await syncCloudData(user);
+    await loadPushState(user);
+  } catch (error) {
+    console.error("Account setup failed:", error);
+  }
+
+  render();
+}
+
+handleEmailLinkSignIn();
+onAuthStateChanged(auth, handleAuthChange);
 render();
