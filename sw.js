@@ -1,4 +1,4 @@
-const CACHE = "actually-free-v3";
+const CACHE = "actually-free-v4";
 const ASSETS = [
   "./",
   "./index.html",
@@ -24,8 +24,30 @@ self.addEventListener("activate", (e) => {
 });
 
 self.addEventListener("fetch", (e) => {
+  const url = new URL(e.request.url);
+
+  if (
+    e.request.method === "GET" &&
+    (url.pathname.endsWith(".js") ||
+     url.pathname.endsWith(".html") ||
+     url.pathname === "/")
+  ) {
+    e.respondWith(
+      fetch(e.request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(e.request, copy));
+          return response;
+        })
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
   e.respondWith(
-    caches.match(e.request).then((cached) => cached || fetch(e.request))
+    caches.match(e.request).then(
+      (cached) => cached || fetch(e.request)
+    )
   );
 });
 

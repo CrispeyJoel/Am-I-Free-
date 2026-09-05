@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
     for (const ev of events) {
       if (!occursOn(ev, todayStr)) continue;
 
-      const notifyMinute = ev.start - (ev.bufferBefore || 0);
+      const notifyMinute = ev.start - (ev.bufferBefore || 0) - 30;
       const notifyLocal = DateTime.fromISO(todayStr, { zone: user.timezone }).plus({ minutes: notifyMinute });
       const diffMin = notifyLocal.diff(localNow, "minutes").minutes;
 
