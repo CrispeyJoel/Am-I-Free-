@@ -1,4 +1,4 @@
-const CACHE = "actually-free-v2";
+const CACHE = "actually-free-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -29,9 +29,24 @@ self.addEventListener("fetch", (e) => {
   );
 });
 
-// Placeholder for future push notifications — needs a backend to
-// send pushes (see README "Adding push notifications later").
-self.addEventListener("push", (e) => {
-  const data = e.data ? e.data.json() : { title: "Actually Free", body: "You have an update." };
-  e.waitUntil(self.registration.showNotification(data.title, { body: data.body }));
+/* ==== Firebase Cloud Messaging (background notifications) ====
+   Fill in the same FIREBASE_CONFIG values used at the top of app.js —
+   a service worker can't import app.js's module, so it's duplicated here. */
+importScripts("https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js");
+
+firebase.initializeApp({
+  apiKey: "AIzaSyD9GasWarxCefArgzbq2vPgSuYmlkTvPs0",
+  authDomain: "amifree-6e5e1.firebaseapp.com",
+  projectId: "amifree-6e5e1",
+  storageBucket: "amifree-6e5e1.firebasestorage.app",
+  messagingSenderId: "592230919079",
+  appId: "1:592230919079:web:b01ed6ee1804bf59656482"
+});
+
+const messaging = firebase.messaging();
+messaging.onBackgroundMessage((payload) => {
+  const title = (payload.notification && payload.notification.title) || "Actually Free";
+  const body = (payload.notification && payload.notification.body) || "";
+  self.registration.showNotification(title, { body, icon: "icon-192.png" });
 });

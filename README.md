@@ -24,18 +24,55 @@ A no-login, installable PWA. Data lives in your phone's local storage for now (s
 
 Every time you push a change to the GitHub repo, Vercel redeploys automatically.
 
-## Phase 2 — Google Calendar sync + push notifications
-Both are genuinely possible, but they need a small backend and your own credentials — not something that can live in static files alone:
+## Cloud sync + notifications (Firebase) — setup
 
-**Google Calendar sync**
-1. Create a Google Cloud project → enable the Calendar API → create an OAuth 2.0 Client ID (type: Web application).
-2. Add sign-in with Google in the app, request the `calendar.events` scope.
-3. On sign-in, fetch/push events via the Calendar API instead of (or alongside) local storage.
+This backs up your events to the cloud (so they survive a reinstall or new phone) and sends real push notifications, without touching Google Calendar or needing Google's app-review process.
 
-**Push notifications**
-1. Generate a VAPID key pair (`web-push generate-vapid-keys`).
-2. Add a "Subscribe to notifications" button that calls `PushManager.subscribe()` and sends the subscription to a small backend endpoint (a single Vercel serverless function is enough).
-3. That backend stores subscriptions and calls the Web Push API on a schedule (e.g. "notify 30 min before an event's buffer starts").
-4. On iPhone, this only works once the app is added to the home screen and iOS is 16.4+.
+### 1. Create the Firebase project
+1. Go to [console.firebase.google.com](https://console.firebase.google.com) → "Add project" → name it anything (e.g. `actually-free`). Free "Spark" plan, no credit card needed.
+2. Inside the project, click the `</>` (web app) icon → register an app (no need for Firebase Hosting) → copy the `firebaseConfig` object it shows you.
+3. Paste that object into **two places**:
+   - Top of `app.js`, replacing `FIREBASE_CONFIG`
+   - Top of `sw.js`, replacing the `firebase.initializeApp({...})` block
 
-Happy to build either of these next — just say the word and whether you'd rather start with Calendar sync or notifications first.
+### 2. Turn on the pieces you need
+- **Authentication** → Sign-in method → enable **Google**.
+- **Firestore Database** → Create database → start in production mode.
+- **Cloud Messaging** → Project settings → Cloud Messaging tab → "Web Push certificates" → Generate key pair → copy the key into `VAPID_PUBLIC_KEY` in `app.js`.
+
+### 3. Lock down Firestore
+In Firestore → Rules, replace the contents with:
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+      match /data/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+      match /notified/{docId} {
+        allow read, write: if false; // only the server (admin SDK) touches this
+      }
+    }
+  }
+}
+```
+
+### 4. Set up the reminder backend
+1. Project settings → Service accounts → "Generate new private key" → downloads a JSON file. Open it and copy the entire contents.
+2. In your Vercel project → Settings → Environment Variables, add:
+   - `FIREBASE_SERVICE_ACCOUNT` = paste the whole JSON file content (as one value)
+   - `CRON_SECRET` = any random string you make up (e.g. `af-9f3k2m...`)
+3. Push all the files (including the new `api/` folder and `package.json`) to your GitHub repo — Vercel will redeploy and install `firebase-admin`/`luxon` automatically.
+
+### 5. Schedule the reminder check
+Vercel's Hobby plan only runs its own Cron feature once a day, which is too infrequent for 30-minute reminders. Use a free external pinger instead:
+1. Go to [cron-job.org](https://cron-job.org) → free account → create a job.
+2. URL: `https://YOUR-APP.vercel.app/api/check-reminders?secret=YOUR_CRON_SECRET`
+3. Interval: every 5 minutes.
+
+That's it — save that job and reminders will fire automatically.
+
+### Using it
+Open the app → tap the cloud icon (top right) → sign in with Google → it'll ask for notification permission. From then on, your events sync to the cloud automatically every time you add/edit/delete, and you'll get a push notification when each event's travel-buffer window starts — even if the app isn't open.

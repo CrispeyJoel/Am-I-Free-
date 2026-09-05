@@ -1,3 +1,36 @@
+/* ---------- Cloud sync + push (Firebase) ----------
+   Fill these in from your Firebase project (see README "Cloud sync setup").
+   This file must be loaded as a <script type="module"> for the imports below to work. */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+  getFirestore, doc, setDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import {
+  getMessaging, getToken, isSupported as messagingSupported
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging.js";
+
+// ====== FILL THIS IN — Firebase console → Project settings → General → your web app config ======
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD9GasWarxCefArgzbq2vPgSuYmlkTvPs0",
+  authDomain: "amifree-6e5e1.firebaseapp.com",
+  projectId: "amifree-6e5e1",
+  storageBucket: "amifree-6e5e1.firebasestorage.app",
+  messagingSenderId: "592230919079",
+  appId: "1:592230919079:web:b01ed6ee1804bf59656482"
+};
+// Firebase console → Project settings → Cloud Messaging → Web Push certificates → generate, then paste the key pair's public key here
+const VAPID_PUBLIC_KEY = "BFXiYQnuOx5YnxnSs_6hbwYScOzo0V8brVdsOAzGNOVBhWh_9XfPn62P5E2ga0RK7ANeeanCZoSZsuLq1ZQjuG8";
+// ===================================================================================================
+
+const fbApp = initializeApp(FIREBASE_CONFIG);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+let currentUser = null;
+let suppressNextCloudPush = false; // avoids re-saving the instant a remote update arrives
+
 /* ---------- Config ---------- */
 const DAY_START_MIN = 6 * 60;   // 6:00am
 const DAY_END_MIN = 23 * 60;    // 11:00pm
@@ -28,6 +61,10 @@ function load(key, fallback) {
 function save() {
   localStorage.setItem("af_events", JSON.stringify(events));
   localStorage.setItem("af_categories", JSON.stringify(categories));
+  if (currentUser && !suppressNextCloudPush) {
+    setDoc(doc(db, "users", currentUser.uid, "data", "events"), { list: events, categories }).catch(()=>{});
+  }
+  suppressNextCloudPush = false;
 }
 function startOfDay(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
 function startOfWeek(d) { const x = startOfDay(d); const dow = (x.getDay()+6)%7; x.setDate(x.getDate()-dow); return x; } // Monday start
@@ -189,8 +226,9 @@ function renderTopbar() {
       <button data-view="day" class="${view==="day"?"active":""}">Week</button>
       <button data-view="month" class="${view==="month"?"active":""}">Month</button>
     </div>
-    <div style="width:36px"></div>
-  </div>`;
+    <button class="iconbtn" data-act="cloud" title="Cloud sync">${currentUser ? "☁︎" : "☁"}</button>
+  </div>
+  <div id="cloudstatus" style="padding:0 16px 6px;font-size:0.7rem;color:var(--ink-soft)">${currentUser ? `Synced as ${currentUser.displayName||currentUser.email}` : "Tap the cloud icon to back up + enable notifications"}</div>`;
 }
 
 function renderFreeBanner() {
@@ -325,6 +363,10 @@ function attachHandlers() {
       if (act==="today") { weekStart = startOfWeek(new Date()); selectedDate = startOfDay(new Date()); monthCursor = startOfMonth(new Date()); render(); }
       if (act==="prev") { view==="month" ? shiftMonth(-1) : shiftWeek(-1); }
       if (act==="next") { view==="month" ? shiftMonth(1) : shiftWeek(1); }
+      if (act==="cloud") {
+        if (!currentUser) signInCloud();
+        else if (confirm(`Synced as ${currentUser.displayName||currentUser.email}. Sign out of cloud backup?`)) signOutCloud();
+      }
     });
   });
   app.querySelectorAll("[data-view]").forEach(btn=>{
@@ -477,4 +519,52 @@ function openSheet(ev, isNew=false) {
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", ()=> navigator.serviceWorker.register("./sw.js").catch(()=>{}));
 }
+
+function signInCloud() {
+  signInWithPopup(auth, new GoogleAuthProvider()).catch(err => alert("Sign-in failed: " + err.message));
+}
+function signOutCloud() { signOut(auth); }
+
+async function enableNotifications() {
+  try {
+    if (!("Notification" in window)) return;
+    const supported = await messagingSupported();
+    if (!supported) return;
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") return;
+    const reg = await navigator.serviceWorker.ready;
+    const messaging = getMessaging(fbApp);
+    const token = await getToken(messaging, { vapidKey: VAPID_PUBLIC_KEY, serviceWorkerRegistration: reg });
+    if (token && currentUser) {
+      await setDoc(doc(db, "users", currentUser.uid), { pushToken: token }, { merge: true });
+    }
+  } catch (e) { console.warn("Push setup skipped:", e.message); }
+}
+
+onAuthStateChanged(auth, (user) => {
+  currentUser = user;
+  if (user) {
+    setDoc(doc(db, "users", user.uid), {
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      updatedAt: Date.now()
+    }, { merge: true });
+
+    onSnapshot(doc(db, "users", user.uid, "data", "events"), (snap) => {
+      if (snap.exists()) {
+        const remote = snap.data();
+        suppressNextCloudPush = true;
+        if (remote.list) events = remote.list;
+        if (remote.categories) categories = remote.categories;
+        localStorage.setItem("af_events", JSON.stringify(events));
+        localStorage.setItem("af_categories", JSON.stringify(categories));
+        render();
+      }
+    });
+
+    enableNotifications();
+  }
+  const row = document.getElementById("cloudstatus");
+  if (row) row.textContent = user ? `Synced as ${user.displayName || user.email}` : "Not connected";
+});
+
 render();

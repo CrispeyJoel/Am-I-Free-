@@ -1,0 +1,9 @@
+{
+  "name": "actually-free",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "luxon": "^3.5.0"
+  }
+}
