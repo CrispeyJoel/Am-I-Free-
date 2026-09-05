@@ -227,28 +227,7 @@ function render() {
   }
 }
 
-function renderTopbar() {
-  const label = view==="month"
-    ? monthCursor.toLocaleDateString(undefined,{month:"long", year:"numeric"})
-    : `${weekStart.toLocaleDateString(undefined,{month:"short",day:"numeric"})} – ${addDays(weekStart,6).toLocaleDateString(undefined,{month:"short",day:"numeric"})}`;
-  return `
-  <div class="topbar">
-    <button class="iconbtn" data-act="prev">‹</button>
-    <div style="text-align:center">
-      <div class="weeklabel">${label}</div>
-    </div>
-    <button class="iconbtn" data-act="next">›</button>
-  </div>
-  <div class="topbar" style="padding-top:0">
-    <button class="iconbtn" data-act="today" title="Back to today">Today</button>
-    <div class="viewtoggle">
-      <button data-view="day" class="${view==="day"?"active":""}">Week</button>
-      <button data-view="month" class="${view==="month"?"active":""}">Month</button>
-    </div>
-    <button class="iconbtn" data-act="cloud" title="Cloud sync">${currentUser ? "☁︎" : "☁"}</button>
-  </div>
-  <div id="cloudstatus" style="padding:0 16px 6px;font-size:0.7rem;color:var(--ink-soft)">${currentUser ? `Synced as ${currentUser.displayName||currentUser.email}` : "Tap the cloud icon to back up + enable notifications"}</div>`;
-}
+function renderTopbar() { const label = view === "month" ? monthCursor.toLocaleDateString(undefined, { month: "long", year: "numeric" }) : `${weekStart.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${addDays(weekStart, 6).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`; return ` <div class="topbar"> <button class="iconbtn" data-act="prev">‹</button> <div style="text-align:center"> <div class="weeklabel">${label}</div> </div> <button class="iconbtn" data-act="next">›</button> </div> <div class="topbar" style="padding-top:0"> <button class="todaybtn" data-act="today" title="Back to today"> Today </button> <div class="viewtoggle"> <button data-view="day" class="${view === "day" ? "active" : ""}"> Week </button> <button data-view="month" class="${view === "month" ? "active" : ""}"> Month </button> </div> <button class="signinbtn" data-act="cloud" title="Cloud sync"> ${currentUser ? "Signed in" : "Sign in"} </button> </div> <div id="cloudstatus" class="cloudstatus"> ${ currentUser ? `Synced as ${currentUser.displayName || currentUser.email}` : "Sign in to back up your calendar + enable notifications" } </div> `; }
 
 function renderFreeBanner() {
   const st = freeStatusNow();
