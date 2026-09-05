@@ -248,46 +248,18 @@ module.exports = async (req, res) => {
               "minutes"
             ).minutes;
 
-          /*
-           * Only print events where the reminder
-           * is within 2 hours of the current time.
-           *
-           * This prevents Vercel logs becoming huge.
-           */
-          if (
-            Math.abs(diffMin) <= 120
-          ) {
-            console.log(
-              "NEAR REMINDER",
-              {
-                event: ev.title,
-                eventId: ev.id,
-                occurrence:
-                  occurrenceDateStr,
-                reminder:
-                  ev.reminder || "30m",
-                now:
-                  localNow.toFormat(
-                    "yyyy-MM-dd HH:mm:ss"
-                  ),
-                eventStart:
-                  eventLocal.toFormat(
-                    "yyyy-MM-dd HH:mm:ss"
-                  ),
-                leaveAt:
-                  leaveLocal.toFormat(
-                    "yyyy-MM-dd HH:mm:ss"
-                  ),
-                notifyAt:
-                  notifyLocal.toFormat(
-                    "yyyy-MM-dd HH:mm:ss"
-                  ),
-                diffMin:
-                  Number(
-                    diffMin.toFixed(2)
-                  )
-              }
-            );
+          console.log("REMINDER CHECK", {
+            event: ev.title,
+            eventId: ev.id,
+            occurrence: occurrenceDateStr,
+            timezone: user.timezone,
+            reminder: ev.reminder,
+            eventStart: eventLocal.toFormat("yyyy-MM-dd HH:mm:ss"),
+            leaveAt: leaveLocal.toFormat("yyyy-MM-dd HH:mm:ss"),
+            notifyAt: notifyLocal.toFormat("yyyy-MM-dd HH:mm:ss"),
+            localNow: localNow.toFormat("yyyy-MM-dd HH:mm:ss"),
+            diffMin: Number(diffMin.toFixed(2))
+          });
           }
 
           /*
