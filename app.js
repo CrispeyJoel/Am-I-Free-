@@ -608,7 +608,7 @@ function openSheet(ev, isNew=false) {
         </div>
       </div>
       <div class="field">
-        <label>Remind me (minutes before leaving)(minutes )</label>
+        <label>Remind me (before leaving)</label>
         <select id="f-reminder">
           <option value="none" ${draft.reminder === "none" ? "selected" : ""}>No reminder</option>
           <option value="30m" ${(!draft.reminder || draft.reminder === "30m") ? "selected" : ""}>30 minutes</option>
