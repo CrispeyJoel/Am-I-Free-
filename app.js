@@ -70,8 +70,19 @@ function startOfDay(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
 function startOfWeek(d) { const x = startOfDay(d); const dow = (x.getDay()+6)%7; x.setDate(x.getDate()-dow); return x; } // Monday start
 function startOfMonth(d) { const x = new Date(d); x.setDate(1); x.setHours(0,0,0,0); return x; }
 function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate()+n); return x; }
-function iso(d) { return d.toISOString().slice(0,10); }
-function sameDay(a,b) { return iso(a)===iso(b); }
+function iso(d) {
+  const x = new Date(d);
+  return `${x.getFullYear()}-${pad2(x.getMonth()+1)}-${pad2(x.getDate())}`;
+}
+
+function sameDay(a, b) {
+  const x = new Date(a);
+  const y = new Date(b);
+
+  return x.getFullYear() === y.getFullYear() &&
+         x.getMonth() === y.getMonth() &&
+         x.getDate() === y.getDate();
+}
 function dayDiff(a,b) { return Math.round((startOfDay(a)-startOfDay(b))/86400000); }
 function pad2(n){ return n.toString().padStart(2,"0"); }
 function minToLabel(min) {
@@ -84,9 +95,15 @@ function categoryOf(id) { return categories.find(c=>c.id===id) || categories[0];
 function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
 /* ---------- Recurrence ---------- */
+function dateFromISO(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function occursOn(ev, date) {
-  const anchor = new Date(ev.dateISO);
+  const anchor = dateFromISO(ev.dateISO);
   const diff = dayDiff(date, anchor);
+
   if (diff < 0) return false;
   if (ev.recurrence === "weekly") return diff % 7 === 0;
   if (ev.recurrence === "fortnightly") return diff % 14 === 0;
@@ -382,7 +399,7 @@ function attachHandlers() {
   });
   app.querySelectorAll("[data-goto]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      const d = new Date(btn.dataset.goto);
+      const d = dateFromISO(btn.dataset.goto);
       selectedDate = startOfDay(d); weekStart = startOfWeek(selectedDate); view="day"; render();
     });
   });
