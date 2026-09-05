@@ -915,3 +915,59 @@ button {
 .pushbtn.active:hover {
   background-color: #d2e3d5;
 }
+
+/* Layout Rows */
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  gap: 8px;
+}
+
+.topbar-view {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 8px;
+}
+
+/* Discrete, Slim White Push Toggle Button */
+.pushbtn-slim {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+}
+
+.pushbtn-slim .dot {
+  width: 6px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #cbd5e1;
+}
+
+.pushbtn-slim:hover {
+  border-color: #cbd5e1;
+  color: #334155;
+  background-color: #f8fafc;
+}
+
+/* Active State (Push On) */
+.pushbtn-slim.active {
+  border-color: #bbf7d0;
+  background-color: #f0fdf4;
+  color: #166534;
+}
+
+.pushbtn-slim.active .dot {
+  background-color: #22c55e;
+}
