@@ -747,6 +747,7 @@ if ("serviceWorker" in navigator) {
 }
 
 function signInCloud() {
+  sessionStorage.setItem("af_awaiting_redirect", "1");
   signInWithRedirect(auth, new GoogleAuthProvider());
 }
 function signOutCloud() { signOut(auth); }
@@ -822,15 +823,22 @@ async function enableNotifications() {
   }
 }
 
+const wasAwaitingRedirect = sessionStorage.getItem("af_awaiting_redirect") === "1";
+sessionStorage.removeItem("af_awaiting_redirect");
+
 getRedirectResult(auth)
   .then(result => {
+    if (!wasAwaitingRedirect) return; // ordinary page load, nothing to report
     if (result && result.user) {
       alert("Redirect success: " + result.user.email);
     } else {
       alert("Redirect completed but no user in result.");
     }
   })
-  .catch(err => alert("Redirect sign-in error: " + err.code + " - " + err.message));
+  .catch(err => {
+    if (!wasAwaitingRedirect) return;
+    alert("Redirect sign-in error: " + err.code + " - " + err.message);
+  });
 
 onAuthStateChanged(auth, (user) => {
   currentUser = user;
