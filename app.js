@@ -343,13 +343,6 @@ function renderMonth() {
 
 function renderQuickBar() {
   return `<div class="quickbar">
-    <input
-      id="quickinput"
-      type="text"
-      placeholder="Quick add"
-      autocomplete="off"
-    />
-
     <button
       id="voicebtn"
       type="button"
@@ -358,6 +351,13 @@ function renderQuickBar() {
     >
       Voice
     </button>
+
+    <input
+      id="quickinput"
+      type="text"
+      placeholder="Quick add"
+      autocomplete="off"
+    />
 
     <button
       id="quickadd"

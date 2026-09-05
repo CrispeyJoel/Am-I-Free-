@@ -864,14 +864,15 @@ button {
 }
 
 #voicebtn {
-  border: none;
-  background: var(--surface);
+  border: 1px solid var(--line);
+  background: var(--bg);
   color: var(--accent);
   width: 50px;
   min-width: 50px;
   height: 50px;
   border-radius: 10px;
-  font-size: 1.1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 #voicebtn.recording {
