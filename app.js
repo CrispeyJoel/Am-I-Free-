@@ -825,7 +825,15 @@ async function enableNotifications() {
   }
 }
 
-getRedirectResult(auth).catch(err => console.warn("Redirect sign-in error:", err.message));
+getRedirectResult(auth)
+  .then(result => {
+    if (result && result.user) {
+      alert("Redirect success: " + result.user.email);
+    } else {
+      alert("Redirect completed but no user in result.");
+    }
+  })
+  .catch(err => alert("Redirect sign-in error: " + err.code + " - " + err.message));
 
 onAuthStateChanged(auth, (user) => {
   currentUser = user;
