@@ -1,6 +1,11 @@
 const admin = require("firebase-admin");
 const { DateTime } = require("luxon");
 
+
+// ------------------------------------------------------------
+// FIREBASE
+// ------------------------------------------------------------
+
 if (!admin.apps.length) {
   const serviceAccount = JSON.parse(
     process.env.FIREBASE_SERVICE_ACCOUNT
@@ -12,6 +17,11 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
+
+
+// ------------------------------------------------------------
+// RECURRENCE
+// ------------------------------------------------------------
 
 function occursOn(ev, dateStr) {
   const anchor = DateTime.fromISO(ev.dateISO, {
@@ -26,7 +36,9 @@ function occursOn(ev, dateStr) {
     target.diff(anchor, "days").days
   );
 
-  if (diff < 0) return false;
+  if (diff < 0) {
+    return false;
+  }
 
   if (ev.recurrence === "weekly") {
     return diff % 7 === 0;
@@ -39,17 +51,32 @@ function occursOn(ev, dateStr) {
   return diff === 0;
 }
 
-function getEventTimes(ev, occurrenceDateStr, timezone) {
+
+// ------------------------------------------------------------
+// EVENT TIMES
+// ------------------------------------------------------------
+
+function getEventTimes(
+  ev,
+  occurrenceDateStr,
+  timezone
+) {
+  const startMinutes =
+    Number(ev.start) || 0;
+
+  const bufferBefore =
+    Number(ev.bufferBefore) || 0;
+
   const eventLocal = DateTime
     .fromISO(occurrenceDateStr, {
       zone: timezone
     })
     .plus({
-      minutes: Number(ev.start) || 0
+      minutes: startMinutes
     });
 
   const leaveLocal = eventLocal.minus({
-    minutes: Number(ev.bufferBefore) || 0
+    minutes: bufferBefore
   });
 
   return {
@@ -58,20 +85,25 @@ function getEventTimes(ev, occurrenceDateStr, timezone) {
   };
 }
 
+
+// ------------------------------------------------------------
+// REMINDER TIME
+// ------------------------------------------------------------
+
 function reminderDateTime(
   ev,
   occurrenceDateStr,
   timezone
 ) {
-  const {
-    leaveLocal
-  } = getEventTimes(
-    ev,
-    occurrenceDateStr,
-    timezone
-  );
+  const { leaveLocal } =
+    getEventTimes(
+      ev,
+      occurrenceDateStr,
+      timezone
+    );
 
-  const reminder = ev.reminder || "30m";
+  const reminder =
+    ev.reminder || "30m";
 
   switch (reminder) {
     case "30m":
@@ -119,8 +151,18 @@ function reminderDateTime(
   }
 }
 
+
+// ------------------------------------------------------------
+// API
+// ------------------------------------------------------------
+
 module.exports = async (req, res) => {
   try {
+
+    // ----------------------------------------------------------
+    // SECURITY
+    // ----------------------------------------------------------
+
     if (
       req.query.secret !==
       process.env.CRON_SECRET
@@ -131,12 +173,22 @@ module.exports = async (req, res) => {
       });
     }
 
+
+    // ----------------------------------------------------------
+    // CURRENT TIME
+    // ----------------------------------------------------------
+
     const nowUtc = DateTime.utc();
 
     let sent = 0;
     let checked = 0;
     let skipped = 0;
     let failed = 0;
+
+
+    // ----------------------------------------------------------
+    // GET USERS
+    // ----------------------------------------------------------
 
     const usersSnap = await db
       .collection("users")
@@ -152,18 +204,43 @@ module.exports = async (req, res) => {
       usersSnap.size
     );
 
+
+    // ----------------------------------------------------------
+    // LOOP USERS
+    // ----------------------------------------------------------
+
     for (const userDoc of usersSnap.docs) {
+
       const user = userDoc.data();
 
       if (
         !user.pushToken ||
         !user.timezone
       ) {
+        console.log(
+          "USER SKIPPED",
+          userDoc.id,
+          {
+            hasPushToken: !!user.pushToken,
+            timezone: user.timezone || null
+          }
+        );
+
         continue;
       }
 
+
+      // --------------------------------------------------------
+      // USER LOCAL TIME
+      // --------------------------------------------------------
+
       const localNow =
         nowUtc.setZone(user.timezone);
+
+
+      // --------------------------------------------------------
+      // GET EVENTS
+      // --------------------------------------------------------
 
       const dataDoc = await db
         .collection("users")
@@ -173,23 +250,43 @@ module.exports = async (req, res) => {
         .get();
 
       if (!dataDoc.exists) {
+        console.log(
+          "NO EVENTS DOCUMENT",
+          userDoc.id
+        );
+
         continue;
       }
 
       const events =
         dataDoc.data().list || [];
 
+
+      // --------------------------------------------------------
+      // DATE RANGE
+      // --------------------------------------------------------
+
       const firstDate =
         localNow
           .startOf("day")
-          .minus({ days: 1 });
+          .minus({
+            days: 1
+          });
 
       const lastDate =
         localNow
           .startOf("day")
-          .plus({ days: 35 });
+          .plus({
+            days: 35
+          });
+
+
+      // --------------------------------------------------------
+      // LOOP EVENTS
+      // --------------------------------------------------------
 
       for (const ev of events) {
+
         if (
           !ev.dateISO ||
           ev.start == null
@@ -197,11 +294,22 @@ module.exports = async (req, res) => {
           continue;
         }
 
+
+        // ------------------------------------------------------
+        // CHECK EACH DATE
+        // ------------------------------------------------------
+
         let cursor = firstDate;
 
         while (cursor <= lastDate) {
+
           const occurrenceDateStr =
             cursor.toISODate();
+
+
+          // ----------------------------------------------------
+          // DOES EVENT OCCUR ON THIS DATE?
+          // ----------------------------------------------------
 
           if (
             !occursOn(
@@ -218,6 +326,11 @@ module.exports = async (req, res) => {
 
           checked++;
 
+
+          // ----------------------------------------------------
+          // CALCULATE EVENT / LEAVING TIMES
+          // ----------------------------------------------------
+
           const {
             eventLocal,
             leaveLocal
@@ -227,6 +340,11 @@ module.exports = async (req, res) => {
             user.timezone
           );
 
+
+          // ----------------------------------------------------
+          // CALCULATE NOTIFICATION TIME
+          // ----------------------------------------------------
+
           const notifyLocal =
             reminderDateTime(
               ev,
@@ -235,12 +353,20 @@ module.exports = async (req, res) => {
             );
 
           if (!notifyLocal) {
+
+            skipped++;
+
             cursor = cursor.plus({
               days: 1
             });
 
             continue;
           }
+
+
+          // ----------------------------------------------------
+          // HOW CLOSE ARE WE TO REMINDER TIME?
+          // ----------------------------------------------------
 
           const diffMin =
             notifyLocal.diff(
@@ -248,20 +374,54 @@ module.exports = async (req, res) => {
               "minutes"
             ).minutes;
 
-          console.log("REMINDER CHECK", {
-            event: ev.title,
-            eventId: ev.id,
-            occurrence: occurrenceDateStr,
-            timezone: user.timezone,
-            reminder: ev.reminder,
-            eventStart: eventLocal.toFormat("yyyy-MM-dd HH:mm:ss"),
-            leaveAt: leaveLocal.toFormat("yyyy-MM-dd HH:mm:ss"),
-            notifyAt: notifyLocal.toFormat("yyyy-MM-dd HH:mm:ss"),
-            localNow: localNow.toFormat("yyyy-MM-dd HH:mm:ss"),
-            diffMin: Number(diffMin.toFixed(2))
-          });
+
+          // ----------------------------------------------------
+          // DIAGNOSTIC LOG
+          // ----------------------------------------------------
+
+          console.log(
+            "REMINDER CHECK",
+            {
+              event: ev.title,
+              eventId: ev.id,
+              occurrence: occurrenceDateStr,
+              timezone: user.timezone,
+              reminder: ev.reminder || "30m",
+
+              eventStart:
+                eventLocal.toFormat(
+                  "yyyy-MM-dd HH:mm:ss"
+                ),
+
+              leaveAt:
+                leaveLocal.toFormat(
+                  "yyyy-MM-dd HH:mm:ss"
+                ),
+
+              notifyAt:
+                notifyLocal.toFormat(
+                  "yyyy-MM-dd HH:mm:ss"
+                ),
+
+              localNow:
+                localNow.toFormat(
+                  "yyyy-MM-dd HH:mm:ss"
+                ),
+
+              diffMin:
+                Number(
+                  diffMin.toFixed(2)
+                )
+            }
+          );
+
+
+          // ----------------------------------------------------
+          // REMINDER IS STILL IN THE FUTURE
+          // ----------------------------------------------------
 
           if (diffMin > 0) {
+
             skipped++;
 
             cursor = cursor.plus({
@@ -270,8 +430,14 @@ module.exports = async (req, res) => {
 
             continue;
           }
+
+
+          // ----------------------------------------------------
+          // REMINDER WAS MORE THAN 5 MINUTES AGO
+          // ----------------------------------------------------
 
           if (diffMin < -5) {
+
             skipped++;
 
             cursor = cursor.plus({
@@ -280,15 +446,26 @@ module.exports = async (req, res) => {
 
             continue;
           }
+
+
+          // ----------------------------------------------------
+          // REMINDER IS DUE
+          // ----------------------------------------------------
 
           console.log(
             "REMINDER DUE",
             {
               event: ev.title,
+              eventId: ev.id,
               occurrence: occurrenceDateStr,
               diffMin
             }
           );
+
+
+          // ----------------------------------------------------
+          // PREVENT DUPLICATE NOTIFICATIONS
+          // ----------------------------------------------------
 
           const key =
             `${ev.id}_${occurrenceDateStr}`;
@@ -303,6 +480,7 @@ module.exports = async (req, res) => {
             await notifiedRef.get();
 
           if (already.exists) {
+
             console.log(
               "ALREADY NOTIFIED",
               key
@@ -315,39 +493,30 @@ module.exports = async (req, res) => {
             continue;
           }
 
+
+          // ----------------------------------------------------
+          // SEND PUSH
+          // ----------------------------------------------------
+
           try {
+
             console.log(
               "SENDING PUSH",
               ev.title
             );
 
-            // ... Firebase send code ...
 
-          } catch (err) {
-            failed++;
+            const title =
+              ev.title ||
+              "Actually Free";
 
-            console.error(
-              "PUSH FAILED",
-              {
-                event: ev.title,
-                code: err.code,
-                message: err.message
-              }
-            );
-          }
+            const body =
+              `Leave at ${leaveLocal.toFormat(
+                "h:mm a"
+              )} for ${eventLocal.toFormat(
+                "h:mm a"
+              )}.`;
 
-          cursor = cursor.plus({
-            days: 1
-          });
-
-            continue;
-          }
-
-          try {
-            console.log(
-              "SENDING PUSH",
-              ev.title
-            );
 
             await admin
               .messaging()
@@ -356,36 +525,25 @@ module.exports = async (req, res) => {
                   user.pushToken,
 
                 notification: {
-                  title:
-                    ev.title ||
-                    "Actually Free",
-
-                  body:
-                    `Leave at ${leaveLocal.toFormat(
-                      "h:mm a"
-                    )} for ${eventLocal.toFormat(
-                      "h:mm a"
-                    )}.`
+                  title,
+                  body
                 },
 
                 webpush: {
                   notification: {
-                    title:
-                      ev.title ||
-                      "Actually Free",
-
-                    body:
-                      `Leave at ${leaveLocal.toFormat(
-                        "h:mm a"
-                      )} for ${eventLocal.toFormat(
-                        "h:mm a"
-                      )}.`,
+                    title,
+                    body,
 
                     icon:
                       "https://am-i-free-eta.vercel.app/icon-192.png"
                   }
                 }
               });
+
+
+            // --------------------------------------------------
+            // MARK AS NOTIFIED
+            // --------------------------------------------------
 
             await notifiedRef.set({
               sentAt:
@@ -395,6 +553,7 @@ module.exports = async (req, res) => {
                 occurrenceDateStr
             });
 
+
             sent++;
 
             console.log(
@@ -403,17 +562,24 @@ module.exports = async (req, res) => {
             );
 
           } catch (err) {
+
             failed++;
 
             console.error(
               "PUSH FAILED",
               {
                 event: ev.title,
+                eventId: ev.id,
                 code: err.code,
                 message: err.message
               }
             );
           }
+
+
+          // ----------------------------------------------------
+          // NEXT DATE
+          // ----------------------------------------------------
 
           cursor = cursor.plus({
             days: 1
@@ -421,6 +587,11 @@ module.exports = async (req, res) => {
         }
       }
     }
+
+
+    // ----------------------------------------------------------
+    // COMPLETE
+    // ----------------------------------------------------------
 
     console.log(
       "CRON COMPLETE",
@@ -432,6 +603,7 @@ module.exports = async (req, res) => {
       }
     );
 
+
     return res.status(200).json({
       ok: true,
       sent,
@@ -441,6 +613,7 @@ module.exports = async (req, res) => {
     });
 
   } catch (err) {
+
     console.error(
       "CRON ERROR",
       err
