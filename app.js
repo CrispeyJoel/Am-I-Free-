@@ -415,7 +415,7 @@ function renderDayCol(date) {
   const showNow = sameDay(date,new Date()) && nowMin>=DAY_START_MIN && nowMin<=DAY_END_MIN;
   const nowLine = showNow ? `<div class="nowline" id="nowline" style="top:${(nowMin-DAY_START_MIN)/60*HOUR_PX}px"></div>` : "";
   return `<div class="daycol">
-    <div class="timeline" style="height:${(DAY_END_MIN-DAY_START_MIN)/60*HOUR_PX}px">
+    <div class="timeline" style="height:${((DAY_END_MIN-DAY_START_MIN)/60+1)*HOUR_PX}px">
       ${hours}
       <div class="eventlayer">${blocks}${nowLine}</div>
     </div>
@@ -751,11 +751,11 @@ function openSheet(ev, isNew=false) {
     <div class="sheet">
       <h2>${isEdit ? "Edit event" : "New event"}</h2>
       <div class="field"><label>Title</label><input type="text" id="f-title" value="${escapeHtml(draft.title)}" /></div>
+      <div class="field"><label>Date</label><input type="date" id="f-date" value="${draft.dateISO}" /></div>
       <div class="row2">
-        <div class="field"><label>Date</label><input type="date" id="f-date" value="${draft.dateISO}" /></div>
         <div class="field"><label>Start time</label><input type="time" id="f-time" value="${pad2(Math.floor(draft.start/60))}:${pad2(draft.start%60)}" /></div>
+        <div class="field"><label>End time</label><input type="time" id="f-endtime" value="${pad2(Math.floor(((draft.start+draft.duration)%1440)/60))}:${pad2((draft.start+draft.duration)%60)}" /></div>
       </div>
-      <div class="field"><label>Duration (minutes)</label><input type="number" id="f-duration" value="${draft.duration}" min="5" step="5" /></div>
       <div class="field">
         <label style="display:flex; align-items:center; justify-content:space-between;">
           <span>Category</span>
@@ -769,7 +769,7 @@ function openSheet(ev, isNew=false) {
         <div class="field">
           <label>Buffer before</label>
           <select id="f-bufbefore">
-            ${[0,10,20,30].map(m => `
+            ${Array.from({length:25},(_,i)=>i*5).map(m => `
               <option value="${m}" ${Number(draft.bufferBefore) === m ? "selected" : ""}>
                 ${m < 60 ? `${m} minutes` : `${Math.floor(m/60)} hour${m >= 120 ? "s" : ""}${m % 60 ? ` ${m % 60} minutes` : ""}`}
               </option>
@@ -780,7 +780,7 @@ function openSheet(ev, isNew=false) {
         <div class="field">
           <label>Buffer after</label>
           <select id="f-bufafter">
-            ${[0,10,20,30].map(m => `
+            ${Array.from({length:25},(_,i)=>i*5).map(m => `
               <option value="${m}" ${Number(draft.bufferAfter) === m ? "selected" : ""}>
                 ${m < 60 ? `${m} minutes` : `${Math.floor(m/60)} hour${m >= 120 ? "s" : ""}${m % 60 ? ` ${m % 60} minutes` : ""}`}
               </option>
@@ -864,12 +864,16 @@ function openSheet(ev, isNew=false) {
 
   overlay.querySelector("#f-save").addEventListener("click", ()=>{
     const [hh,mm] = overlay.querySelector("#f-time").value.split(":").map(Number);
+    const [ehh,emm] = overlay.querySelector("#f-endtime").value.split(":").map(Number);
+    const startMin = hh*60+mm;
+    let endMin = ehh*60+emm;
+    if (endMin <= startMin) endMin += 24*60; // crosses midnight
     const updated = {
       ...draft,
       title: overlay.querySelector("#f-title").value.trim() || "Untitled",
       dateISO: overlay.querySelector("#f-date").value,
-      start: hh*60+mm,
-      duration: parseInt(overlay.querySelector("#f-duration").value,10) || 30,
+      start: startMin,
+      duration: Math.max(5, endMin - startMin),
       categoryId: chosenCat,
       bufferBefore: parseInt(overlay.querySelector("#f-bufbefore").value,10) || 0,
       bufferAfter: parseInt(overlay.querySelector("#f-bufafter").value,10) || 0,
