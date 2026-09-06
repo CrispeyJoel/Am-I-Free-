@@ -90,7 +90,7 @@ function cleanTitle(title) {
   return value ? value.charAt(0).toUpperCase() + value.slice(1) : "Untitled";
 }
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "method not allowed" });
   }
