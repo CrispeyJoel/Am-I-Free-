@@ -1027,7 +1027,6 @@ async function signInCloud() {
     hideError();
 
     try {
-      await setPersistence(auth, browserLocalPersistence);
 
       const provider = new GoogleAuthProvider();
 
