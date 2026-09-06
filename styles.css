@@ -1037,3 +1037,11 @@ button {
   font-size: 1.1rem;
   padding: 4px 8px;
 }
+
+/* Force WebKit/Safari inputs to respect flex container bounds */
+.row2 input[type="date"],
+.row2 input[type="time"] {
+  min-width: 0 !important;
+  width: 100% !important;
+  -webkit-appearance: none;
+}
