@@ -646,6 +646,8 @@ button {
   max-height: 88vh;
 
   overflow-y: auto;
+
+  overflow-x: hidden;
 }
 
 .sheet h2 {
@@ -674,19 +676,12 @@ button {
 .field input[type=number],
 .field select {
   width: 100%;
-
   min-height: 48px;
-
   padding: 10px 11px;
-
   border: 1px solid var(--line);
-
   border-radius: 10px;
-
   background: var(--bg);
-
   color: var(--ink);
-
   font-size: 16px;
 }
 
@@ -698,23 +693,19 @@ button {
 .row2 .field {
   flex: 1;
   min-width: 0;
+  position: relative;
 }
 
 .row2 .field input[type=date],
 .row2 .field input[type=time] {
-  padding-left: 8px;
-  padding-right: 28px;
+  padding-left: 10px;
+  padding-right: 30px;
 }
 
 .row2 .field input[type=date]::-webkit-calendar-picker-indicator,
 .row2 .field input[type=time]::-webkit-calendar-picker-indicator {
   position: absolute;
-  right: 6px;
-  opacity: 1;
-}
-
-.row2 .field {
-  position: relative;
+  right: 8px;
 }
 
 
