@@ -1,4 +1,4 @@
-const CACHE = "actually-free-v6";
+const CACHE = "actually-free-v7";
 
 const ASSETS = [
   "./",
@@ -64,6 +64,47 @@ self.addEventListener("fetch", event => {
    FIREBASE CLOUD MESSAGING
    ============================================================ */
 
+// importScripts(
+//   "https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"
+// );
+
+// importScripts(
+//   "https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js"
+// );
+
+// firebase.initializeApp({
+//   apiKey: "AIzaSyD9GasWarxCefArgzbq2vPgSuYmlkTvPs0",
+//   authDomain: "amifree-6e5e1.firebaseapp.com",
+//   projectId: "amifree-6e5e1",
+//   storageBucket: "amifree-6e5e1.firebasestorage.app",
+//   messagingSenderId: "592230919079",
+//   appId: "1:592230919079:web:b01ed6ee1804bf59656482"
+// });
+
+// const messaging = firebase.messaging();
+
+// messaging.onBackgroundMessage(payload => {
+//   const title =
+//     payload.data?.title ||
+//     payload.notification?.title ||
+//     "Actually Free";
+
+//   const body =
+//     payload.data?.body ||
+//     payload.notification?.body ||
+//     "";
+
+//   self.registration.showNotification(title, {
+//     body,
+//     icon: "./icon-192.png",
+//     badge: "./icon-192.png"
+//   });
+// });
+
+/* ============================================================
+   FIREBASE CLOUD MESSAGING
+   ============================================================ */
+
 importScripts(
   "https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"
 );
@@ -84,19 +125,22 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(payload => {
-  const title =
-    payload.data?.title ||
-    payload.notification?.title ||
-    "Actually Free";
-
-  const body =
-    payload.data?.body ||
-    payload.notification?.body ||
-    "";
+  const title = payload.data?.title || payload.notification?.title || "Actually Free";
+  const body = payload.data?.body || payload.notification?.body || "";
 
   self.registration.showNotification(title, {
     body,
-    icon: "./icon-192.png",
-    badge: "./icon-192.png"
+    icon: "/icon-192.png",
+    badge: "/icon-192.png"
   });
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then(clientList => {
+      if (clientList.length > 0) return clientList[0].focus();
+      return clients.openWindow("/");
+    })
+  );
 });
