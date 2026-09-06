@@ -170,7 +170,7 @@ async function callGemini(url, options) {
 
   try {
     const geminiRes = await callGemini(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent",
       {
         method: "POST",
         headers: {
