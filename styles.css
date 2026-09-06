@@ -700,9 +700,21 @@ button {
   min-width: 0;
 }
 
-.row2 .field input {
+.row2 .field input[type=date],
+.row2 .field input[type=time] {
   padding-left: 8px;
-  padding-right: 4px;
+  padding-right: 28px;
+}
+
+.row2 .field input[type=date]::-webkit-calendar-picker-indicator,
+.row2 .field input[type=time]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 6px;
+  opacity: 1;
+}
+
+.row2 .field {
+  position: relative;
 }
 
 
