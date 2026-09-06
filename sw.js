@@ -105,7 +105,7 @@
 // });
 
 
-const CACHE = "actually-free-v8";
+const CACHE = "actually-free-v9";
 
 const ASSETS = [
   "./",
@@ -137,17 +137,18 @@ self.addEventListener("activate", event => {
   self.clients.claim();
 });
 
-self.addEventListener("fetch", event => {
-  const request = event.request;
-  const url = new URL(request.url);
+  self.addEventListener("fetch", (e) => {
+    const url = new URL(e.request.url);
 
-  if (request.method !== "GET") return;
-
-  if (
-    url.pathname.endsWith(".js") ||
-    url.pathname.endsWith(".html") ||
-    url.pathname === "/"
-  ) {
+    if (
+      e.request.method === "GET" &&
+      (
+        url.pathname.endsWith(".js") ||
+        url.pathname.endsWith(".html") ||
+        url.pathname.endsWith(".css") ||
+        url.pathname === "/"
+      )
+    ) {
     event.respondWith(
       fetch(request)
         .then(response => {
