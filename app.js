@@ -2,10 +2,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/fireba
 
 import {
   getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   onAuthStateChanged,
   signOut,
   setPersistence,
@@ -835,69 +834,29 @@ async function signInCloud() {
 
   overlay.innerHTML = `
     <div class="sheet">
-      <h2>Cloud account</h2>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h2 style="margin:0;">Cloud account</h2>
+        <button id="authClose" style="border:none; background:none; font-size:1.3rem; line-height:1; color:var(--ink-soft); padding:4px;">×</button>
+      </div>
 
       <div class="field">
         <label>Email</label>
-        <input
-          id="authEmail"
-          type="email"
-          autocomplete="email"
-          placeholder="you@example.com"
-        />
+        <input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com" />
       </div>
 
       <div class="field">
         <label>Password</label>
-        <input
-          id="authPassword"
-          type="password"
-          autocomplete="current-password"
-          placeholder="Password"
-        />
+        <input id="authPassword" type="password" autocomplete="current-password" placeholder="Password" />
       </div>
 
-      <div
-        id="authError"
-        style="
-          display:none;
-          margin:10px 0;
-          padding:10px;
-          border-radius:8px;
-          background:#fff0ef;
-          color:#b42318;
-          font-size:13px;
-        "
-      ></div>
+      <div id="authMessage" style="display:none; margin:10px 0; padding:10px; border-radius:8px; font-size:13px;"></div>
 
-      <div class="sheetactions">
-        <button class="btn ghost" id="authCancel">
-          Cancel
-        </button>
+      <button class="btn primary" id="authLogin" style="width:100%;">Sign in</button>
 
-        <button class="btn ghost" id="authGoogle">
-          Google
-        </button>
-
-        <button class="btn primary" id="authLogin">
-          Sign in
-        </button>
+      <div style="display:flex; justify-content:space-between; margin-top:14px; font-size:13px;">
+        <button id="authCreate" style="border:none; background:none; text-decoration:underline; cursor:pointer; padding:0; color:var(--ink);">Create an account</button>
+        <button id="authForgot" style="border:none; background:none; text-decoration:underline; cursor:pointer; padding:0; color:var(--ink);">Forgot password?</button>
       </div>
-
-      <button
-        id="authCreate"
-        style="
-          width:100%;
-          margin-top:12px;
-          border:0;
-          background:none;
-          font-size:13px;
-          text-decoration:underline;
-          cursor:pointer;
-        "
-      >
-        Create an account
-      </button>
     </div>
   `;
 
@@ -905,144 +864,80 @@ async function signInCloud() {
 
   const emailInput = overlay.querySelector("#authEmail");
   const passwordInput = overlay.querySelector("#authPassword");
-  const errorBox = overlay.querySelector("#authError");
+  const messageBox = overlay.querySelector("#authMessage");
 
-  const showError = message => {
-    errorBox.textContent = message;
-    errorBox.style.display = "block";
+  const showMessage = (text, isError = true) => {
+    messageBox.textContent = text;
+    messageBox.style.background = isError ? "#fff0ef" : "#eefaf0";
+    messageBox.style.color = isError ? "#b42318" : "#1a7f3c";
+    messageBox.style.display = "block";
   };
+  const hideMessage = () => { messageBox.style.display = "none"; };
 
-  const hideError = () => {
-    errorBox.textContent = "";
-    errorBox.style.display = "none";
-  };
-
-  overlay.querySelector("#authCancel").addEventListener("click", () => {
-    overlay.remove();
-  });
-
-  overlay.addEventListener("click", event => {
-    if (event.target === overlay) {
-      overlay.remove();
-    }
-  });
+  overlay.querySelector("#authClose").addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
 
   overlay.querySelector("#authLogin").addEventListener("click", async () => {
-    hideError();
-
+    hideMessage();
     const email = emailInput.value.trim().toLowerCase();
     const password = passwordInput.value;
 
-    if (!email) {
-      showError("Enter your email address.");
-      return;
-    }
-
-    if (!password) {
-      showError("Enter your password.");
-      return;
-    }
+    if (!email) return showMessage("Enter your email address.");
+    if (!password) return showMessage("Enter your password.");
 
     try {
-      await setPersistence(auth, browserLocalPersistence);
-
-      await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
+      await signInWithEmailAndPassword(auth, email, password);
       overlay.remove();
     } catch (error) {
       console.error("Email sign-in failed:", error);
-
       const messages = {
-        "auth/invalid-credential":
-          "The email or password is incorrect.",
-        "auth/user-not-found":
-          "No account exists with this email.",
-        "auth/wrong-password":
-          "The password is incorrect.",
-        "auth/invalid-email":
-          "Enter a valid email address.",
-        "auth/too-many-requests":
-          "Too many attempts. Try again later."
+        "auth/invalid-credential": "The email or password is incorrect.",
+        "auth/user-not-found": "No account exists with this email — try Create an account instead.",
+        "auth/wrong-password": "The password is incorrect.",
+        "auth/invalid-email": "Enter a valid email address.",
+        "auth/too-many-requests": "Too many attempts. Try again later."
       };
-
-      showError(
-        messages[error.code] ||
-        error.message ||
-        "Sign-in failed."
-      );
+      showMessage(messages[error.code] || error.message || "Sign-in failed.");
     }
   });
 
   overlay.querySelector("#authCreate").addEventListener("click", async () => {
-    hideError();
-
+    hideMessage();
     const email = emailInput.value.trim().toLowerCase();
     const password = passwordInput.value;
 
-    if (!email) {
-      showError("Enter your email address.");
-      return;
-    }
-
-    if (password.length < 6) {
-      showError("Password must contain at least 6 characters.");
-      return;
-    }
+    if (!email) return showMessage("Enter your email address.");
+    if (password.length < 6) return showMessage("Password must contain at least 6 characters.");
 
     try {
-      await setPersistence(auth, browserLocalPersistence);
-
-      await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
+      await createUserWithEmailAndPassword(auth, email, password);
       overlay.remove();
     } catch (error) {
       console.error("Account creation failed:", error);
-
       const messages = {
-        "auth/email-already-in-use":
-          "An account already exists with this email. Try signing in instead.",
-        "auth/invalid-email":
-          "Enter a valid email address.",
-        "auth/weak-password":
-          "Password must contain at least 6 characters."
+        "auth/email-already-in-use": "An account already exists with this email — try Sign in, or use Forgot password.",
+        "auth/invalid-email": "Enter a valid email address.",
+        "auth/weak-password": "Password must contain at least 6 characters."
       };
-
-      showError(
-        messages[error.code] ||
-        error.message ||
-        "Could not create account."
-      );
+      showMessage(messages[error.code] || error.message || "Could not create account.");
     }
   });
 
-  overlay.querySelector("#authGoogle").addEventListener("click", async () => {
-    hideError();
+  overlay.querySelector("#authForgot").addEventListener("click", async () => {
+    hideMessage();
+    const email = emailInput.value.trim().toLowerCase();
+    if (!email) return showMessage("Enter your email address first, then tap Forgot password.");
 
     try {
-
-      const provider = new GoogleAuthProvider();
-
-      await signInWithPopup(auth, provider);
-
-      overlay.remove();
+      await sendPasswordResetEmail(auth, email);
+      showMessage("Password reset email sent — check your inbox, then come back and sign in.", false);
     } catch (error) {
-      console.error("Google sign-in failed:", error);
-
-      if (error.code === "auth/popup-blocked") {
-        showError("The sign-in window was blocked. Try again.");
-      } else if (error.code === "auth/popup-closed-by-user") {
-        showError("Google sign-in was cancelled.");
-      } else {
-        showError(error.message || "Google sign-in failed.");
-      }
+      console.error("Password reset failed:", error);
+      const messages = {
+        "auth/user-not-found": "No account exists with this email — try Create an account instead.",
+        "auth/invalid-email": "Enter a valid email address."
+      };
+      showMessage(messages[error.code] || error.message || "Couldn't send reset email.");
     }
   });
 }
