@@ -450,6 +450,7 @@ function renderQuickBar() {
       aria-label="Add event by voice"
     >
       Voice
+      <span id="aiStatusDot" class="ai-status-dot ${aiStatus}"></span>
     </button>
 
     <input
@@ -510,6 +511,14 @@ function tickNowLine() {
 
 let voiceRecognition = null;
 let isRecording = false;
+
+let aiStatus = "unknown"; // "unknown" | "good" | "busy"
+
+function setAiStatus(status) {
+  aiStatus = status;
+  const dot = document.getElementById("aiStatusDot");
+  if (dot) dot.className = "ai-status-dot " + status;
+}
 
 function startVoiceInput() {
   const SpeechRecognition =
@@ -643,8 +652,10 @@ async function submitQuickAdd() {
   let draft;
   try {
     draft = await parseQuickAddAI(text);
+    setAiStatus("good");
   } catch (e) {
     console.warn("AI parse unavailable, falling back to local parsing:", e.message);
+    setAiStatus("busy");
     draft = parseQuickAdd(text);
   }
 

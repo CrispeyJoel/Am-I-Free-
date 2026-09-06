@@ -154,8 +154,22 @@ Rules:
 
 User text: ${JSON.stringify(input)}`;
 
+async function callGemini(url, options) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const r = await fetch(url, options);
+    if (r.ok) return r;
+    const body = await r.json().catch(() => ({}));
+    const msg = (body.error && body.error.message) || "";
+    if (attempt === 0 && /overloaded|high demand|503/i.test(msg)) {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      continue;
+    }
+    return r; // return the failed response as-is on the last attempt or non-retryable error
+  }
+}
+
   try {
-    const geminiRes = await fetch(
+    const geminiRes = await callGemini(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
       {
         method: "POST",

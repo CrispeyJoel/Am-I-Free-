@@ -973,3 +973,26 @@ button {
 .pushbtn-slim.active .dot {
   background-color: #22c55e;
 }
+
+#voicebtn {
+  position: relative;
+}
+
+.ai-status-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--line);
+  border: 2px solid var(--surface);
+}
+
+.ai-status-dot.good {
+  background: #22c55e;
+}
+
+.ai-status-dot.busy {
+  background: var(--danger);
+}
