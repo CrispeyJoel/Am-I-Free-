@@ -6,51 +6,52 @@ const DEFAULT_CATEGORIES = [
   { name: "Personal", earnsDefault: false }
 ];
 
+// Gemini REST API v1beta responseSchema requires UPPERCASE OpenAPI types
 const RESPONSE_SCHEMA = {
-  type: "object",
+  type: "OBJECT",
   properties: {
     title: {
-      type: "string",
+      type: "STRING",
       description: "The concise title of the event (1 to 6 words). Omit times, dates, and instructions."
     },
     date: {
-      type: "string",
+      type: "STRING",
       description: "Event date in YYYY-MM-DD format."
     },
     time: {
-      type: "string",
+      type: "STRING",
       description: "Event start time in 24-hour HH:MM format."
     },
     duration: {
-      type: "integer",
+      type: "INTEGER",
       description: "Event duration in minutes."
     },
     category: {
-      type: "string",
+      type: "STRING",
       description: "One of the available category names."
     },
     bufferBefore: {
-      type: "integer",
+      type: "INTEGER",
       description: "Travel/preparation buffer before event in minutes."
     },
     bufferAfter: {
-      type: "integer",
+      type: "INTEGER",
       description: "Travel/recovery buffer after event in minutes."
     },
     mandatory: {
-      type: "boolean",
+      type: "BOOLEAN",
       description: "Whether the event is mandatory."
     },
     earnsMoney: {
-      type: "boolean",
+      type: "BOOLEAN",
       description: "Whether the event earns money."
     },
     recurrence: {
-      type: "string",
+      type: "STRING",
       enum: ["none", "weekly", "fortnightly"]
     },
     reminder: {
-      type: "string",
+      type: "STRING",
       enum: ["none", "30m", "1h", "6h", "12h", "1d", "1w", "1mo"]
     }
   },
@@ -77,10 +78,10 @@ function cleanTitle(title) {
     .replace(/\s+/g, " ")
     .trim();
 
-  // Strip leading speech fillers if retained by transcription
+  // Strip leading speech fillers
   value = value.replace(/^(?:okay|ok|uh|um|er|so|yeah|yep|please)[,:]?\s*/i, "").trim();
 
-  // Enforce word count limit as safety guardrail
+  // Enforce word count limit
   const words = value.split(/\s+/);
   if (words.length > 7) {
     value = words.slice(0, 7).join(" ");
@@ -90,12 +91,27 @@ function cleanTitle(title) {
   return value ? value.charAt(0).toUpperCase() + value.slice(1) : "Untitled";
 }
 
+function sanitizeNumber(val, defaultVal, min, max) {
+  const num = Number(val);
+  const safeNum = Number.isNaN(num) ? defaultVal : num;
+  return Math.min(max, Math.max(min, safeNum));
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "method not allowed" });
   }
 
-  const { text, timezone, todayISO, categories } = req.body || {};
+  let body = req.body || {};
+  if (typeof body === "string") {
+    try {
+      body = JSON.parse(body);
+    } catch {
+      return res.status(400).json({ error: "invalid JSON body" });
+    }
+  }
+
+  const { text, timezone, todayISO, categories } = body;
 
   if (!text || !String(text).trim()) {
     return res.status(400).json({ error: "missing text" });
@@ -140,7 +156,7 @@ User text: ${JSON.stringify(input)}`;
 
   try {
     const geminiRes = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+      "[https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent](https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent)",
       {
         method: "POST",
         headers: {
@@ -174,29 +190,19 @@ User text: ${JSON.stringify(input)}`;
       });
     }
 
-    const parsed = JSON.parse(raw);
+    // Strip potential markdown backticks before parsing
+    const cleanRaw = raw.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+    const parsed = JSON.parse(cleanRaw);
 
     // Format & clean output
     parsed.title = cleanTitle(parsed.title);
-
-    parsed.duration = Math.min(
-      1440,
-      Math.max(5, Number(parsed.duration) || 60)
-    );
-
-    parsed.bufferBefore = Math.min(
-      180,
-      Math.max(0, Number(parsed.bufferBefore) ?? 30)
-    );
-
-    parsed.bufferAfter = Math.min(
-      180,
-      Math.max(0, Number(parsed.bufferAfter) ?? 30)
-    );
+    parsed.duration = sanitizeNumber(parsed.duration, 60, 5, 1440);
+    parsed.bufferBefore = sanitizeNumber(parsed.bufferBefore, 30, 0, 180);
+    parsed.bufferAfter = sanitizeNumber(parsed.bufferAfter, 30, 0, 180);
 
     return res.status(200).json(parsed);
   } catch (error) {
     console.error("Gemini event parsing failed:", error);
     return res.status(500).json({ error: error.message });
   }
-};
+}
