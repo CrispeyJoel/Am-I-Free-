@@ -11,8 +11,7 @@ const RESPONSE_SCHEMA = {
   properties: {
     title: {
       type: "string",
-      description:
-        "The shortest useful name for the event. Use 2 to 8 words. Describe only the activity, task, place, or person. Never include the date, weekday, time, duration, reminder, travel information, or conversational filler. Never copy the user's whole sentence."
+      description: "The concise title of the event (1 to 6 words). Omit times, dates, and instructions."
     },
     date: {
       type: "string",
@@ -32,11 +31,11 @@ const RESPONSE_SCHEMA = {
     },
     bufferBefore: {
       type: "integer",
-      description: "Travel/preparation buffer before the event in minutes."
+      description: "Travel/preparation buffer before event in minutes."
     },
     bufferAfter: {
       type: "integer",
-      description: "Travel/recovery buffer after the event in minutes."
+      description: "Travel/recovery buffer after event in minutes."
     },
     mandatory: {
       type: "boolean",
@@ -70,48 +69,25 @@ const RESPONSE_SCHEMA = {
   ]
 };
 
-function cleanTitle(title, input) {
-  let value = String(title || "").trim();
-  const original = String(input || "").trim();
+function cleanTitle(title) {
+  if (!title) return "Untitled";
 
-  value = value
+  let value = String(title)
     .replace(/^[\s"'`]+|[\s"'`]+$/g, "")
     .replace(/\s+/g, " ")
     .trim();
 
-  const words = value.split(/\s+/).filter(Boolean);
-  const originalWords = original.split(/\s+/).filter(Boolean);
+  // Strip leading speech fillers if retained by transcription
+  value = value.replace(/^(?:okay|ok|uh|um|er|so|yeah|yep|please)[,:]?\s*/i, "").trim();
 
-  // Gemini occasionally returns the entire spoken sentence despite the schema.
-  // Reject that output and derive a short fallback from the input.
-  const looksLikeWholeSentence =
-    !value ||
-    words.length > 8 ||
-    (originalWords.length >= 8 && words.length >= originalWords.length * 0.75);
-
-  if (looksLikeWholeSentence) {
-    value = original
-      .replace(/\b(?:please|could you|can you|would you|i want to|i need to|remind me to|remind me|schedule|add|create|book|put|set up)\b/gi, "")
-      .replace(/\b(?:today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)\b/gi, "")
-      .replace(/\b(?:at|around|by)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?\b/gi, "")
-      .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/gi, "")
-      .replace(/\s+/g, " ")
-      .replace(/^[,\-–:;\s]+|[,\-–:;\s]+$/g, "")
-      .trim();
+  // Enforce word count limit as safety guardrail
+  const words = value.split(/\s+/);
+  if (words.length > 7) {
+    value = words.slice(0, 7).join(" ");
   }
 
-  // Remove conversational fragments that sometimes survive transcription.
-  value = value
-    .replace(/^(?:okay|ok|uh|um|er|so|yeah|yep|please)[,:]?\s*/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const finalWords = value.split(/\s+/).filter(Boolean);
-  if (finalWords.length > 8) {
-    value = finalWords.slice(0, 8).join(" ");
-  }
-
-  return value || "Untitled";
+  // Capitalize first character
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : "Untitled";
 }
 
 module.exports = async (req, res) => {
@@ -142,39 +118,25 @@ module.exports = async (req, res) => {
   const today = todayISO || new Date().toISOString().slice(0, 10);
   const tz = timezone || "Australia/Sydney";
 
-  const prompt = `You are the event parser for a personal calendar app.
+  const prompt = `You are a calendar event parser. Extract event details from the user text into structured JSON.
 
-Convert the user's spoken or typed sentence into exactly one calendar event.
+Context:
+- Today's Date: ${today} (${tz})
+- Available Categories: ${catDescriptions}
 
-Today's date is ${today} in timezone ${tz}.
-Resolve relative dates such as "tomorrow", "next Tuesday", and "Friday" from that date. A bare weekday means the next occurrence.
+Title Extraction Examples:
+- "Schedule piano lesson with Zach next Tuesday at 4pm" -> "Piano Lesson with Zach"
+- "Can you put dentist appointment tomorrow at nine" -> "Dentist Appointment"
+- "Go to the gym Friday at 6" -> "Gym"
+- "Remind me to do tutoring with Sarah at 5pm" -> "Tutoring with Sarah"
+- "Work shift at the hospital from 8am to 4pm" -> "Work Shift"
 
-Available categories: ${catDescriptions}.
-Choose the closest category. Use Personal if nothing fits.
+Rules:
+1. Title must be 1 to 6 words naming only the activity, person, or place.
+2. Strip dates, times, days of the week, and setup phrasing (e.g. "remind me to", "schedule").
+3. Default duration is 60 mins. Default buffers are 30 mins before/after. Default category is Personal if unclear.
 
-Defaults:
-- duration: 60 minutes
-- bufferBefore: 30 minutes
-- bufferAfter: 30 minutes
-- mandatory: true
-- reminder: 30m
-- recurrence: none
-
-TITLE RULES ARE CRITICAL:
-- title must be ONLY the core event name.
-- title must contain 2 to 8 words where possible.
-- NEVER include a time, date, weekday, duration, reminder, buffer, or travel instruction.
-- NEVER include words such as schedule, add, create, book, remind me, at, on, tomorrow, today, next, or o'clock when they are only instructions.
-- NEVER copy the whole user sentence into title.
-- Ignore speech-to-text filler such as "um", "uh", "okay", "so", and "please".
-- If the user says "Schedule piano lesson with Zach next Tuesday at 4pm", title must be "Piano lesson with Zach".
-- If the user says "Can you put dentist appointment tomorrow at nine", title must be "Dentist appointment".
-- If the user says "I have tutoring with Sarah at 5", title must be "Tutoring with Sarah".
-- If the user says "Go to the gym Friday at 6", title must be "Gym".
-
-Return only the structured JSON matching the response schema.
-
-User sentence: ${JSON.stringify(input)}`;
+User text: ${JSON.stringify(input)}`;
 
   try {
     const geminiRes = await fetch(
@@ -200,14 +162,11 @@ User sentence: ${JSON.stringify(input)}`;
 
     if (!geminiRes.ok) {
       return res.status(502).json({
-        error:
-          (data.error && data.error.message) ||
-          "Gemini request failed"
+        error: (data.error && data.error.message) || "Gemini request failed"
       });
     }
 
-    const raw =
-      data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!raw) {
       return res.status(502).json({
@@ -216,9 +175,10 @@ User sentence: ${JSON.stringify(input)}`;
     }
 
     const parsed = JSON.parse(raw);
-    parsed.title = cleanTitle(parsed.title, input);
 
-    // Clamp obviously broken numeric values before returning them to the app.
+    // Format & clean output
+    parsed.title = cleanTitle(parsed.title);
+
     parsed.duration = Math.min(
       1440,
       Math.max(5, Number(parsed.duration) || 60)
@@ -226,12 +186,12 @@ User sentence: ${JSON.stringify(input)}`;
 
     parsed.bufferBefore = Math.min(
       180,
-      Math.max(0, Number(parsed.bufferBefore) || 0)
+      Math.max(0, Number(parsed.bufferBefore) ?? 30)
     );
 
     parsed.bufferAfter = Math.min(
       180,
-      Math.max(0, Number(parsed.bufferAfter) || 0)
+      Math.max(0, Number(parsed.bufferAfter) ?? 30)
     );
 
     return res.status(200).json(parsed);
