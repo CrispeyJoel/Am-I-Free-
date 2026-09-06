@@ -837,19 +837,6 @@ async function registerServiceWorker() {
 
 window.addEventListener("load", registerServiceWorker);
 
-async function checkAiStatus() {
-  try {
-    const res = await fetch("/api/ai-status");
-    const data = await res.json();
-    setAiStatus(data.status === "good" ? "good" : "busy");
-  } catch (e) {
-    setAiStatus("busy");
-  }
-}
-
-checkAiStatus();
-setInterval(checkAiStatus, 5 * 60 * 1000); // recheck every 5 minutes while the app stays open
-
 async function signInCloud() {
   const existing = document.getElementById("authOverlay");
   if (existing) existing.remove();
