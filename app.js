@@ -449,7 +449,7 @@ function renderQuickBar() {
       title="Add event by voice"
       aria-label="Add event by voice"
     >
-      Voice
+      <span id="voiceLabel">Voice</span>
       <span id="aiStatusDot" class="ai-status-dot ${aiStatus}"></span>
     </button>
 
@@ -547,9 +547,10 @@ function startVoiceInput() {
   const button = document.getElementById("voicebtn");
 
   if (button) {
-    button.classList.add("recording");
-    button.textContent = "Voice";
-  }
+      button.classList.add("recording");
+      const label = document.getElementById("voiceLabel");
+      if (label) label.textContent = "Voice";
+    }
 
   voiceRecognition.onresult = (event) => {
     const transcript =
@@ -573,17 +574,18 @@ function startVoiceInput() {
   };
 
   voiceRecognition.onend = () => {
-    isRecording = false;
+      isRecording = false;
 
-    const button = document.getElementById("voicebtn");
+      const button = document.getElementById("voicebtn");
 
-    if (button) {
-      button.classList.remove("recording");
-      button.textContent = "Voice";
-    }
+      if (button) {
+        button.classList.remove("recording");
+        const label = document.getElementById("voiceLabel");
+        if (label) label.textContent = "Voice";
+      }
 
-    voiceRecognition = null;
-  };
+      voiceRecognition = null;
+    };
 
   voiceRecognition.start();
 }
