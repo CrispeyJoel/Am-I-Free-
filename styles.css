@@ -699,7 +699,7 @@ button {
 .row2 .field input[type=date],
 .row2 .field input[type=time] {
   padding-left: 10px;
-  padding-right: 30px;
+  padding-right: 100px;
 }
 
 .row2 .field input[type=date]::-webkit-calendar-picker-indicator,
