@@ -848,7 +848,11 @@ async function checkAiStatus() {
 }
 
 checkAiStatus();
-setInterval(checkAiStatus, 5 * 60 * 1000); // recheck every 5 minutes while the app stays open
+setInterval(checkAiStatus, 60 * 1000); // recheck every 1 minutes while the app stays open
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") checkAiStatus();
+});
 
 async function signInCloud() {
   const existing = document.getElementById("authOverlay");
