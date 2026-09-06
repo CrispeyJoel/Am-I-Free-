@@ -140,7 +140,7 @@ User text: ${JSON.stringify(input)}`;
 
   try {
     const geminiRes = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.6-flash:generateContent",
       {
         method: "POST",
         headers: {
