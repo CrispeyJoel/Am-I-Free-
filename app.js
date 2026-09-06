@@ -668,6 +668,69 @@ async function submitQuickAdd() {
 function shiftWeek(n) { weekStart = addDays(weekStart, 7*n); selectedDate = addDays(selectedDate,7*n); render(); }
 function shiftMonth(n) { monthCursor = new Date(monthCursor.getFullYear(), monthCursor.getMonth()+n, 1); render(); }
 
+function openCategoryManager(onDone) {
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+
+  const rowsHtml = () => categories.map((c, i) => `
+    <div class="catrow" data-idx="${i}">
+      <input type="color" class="catcolor" value="${c.color}" />
+      <input type="text" class="catname" value="${escapeHtml(c.name)}" />
+      <button type="button" class="catdelete" title="Delete category">✕</button>
+    </div>
+  `).join("");
+
+  overlay.innerHTML = `
+    <div class="sheet">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h2 style="margin:0;">Manage categories</h2>
+        <button id="catClose" style="border:none; background:none; font-size:1.3rem; line-height:1; color:var(--ink-soft); padding:4px;">×</button>
+      </div>
+      <div id="catList">${rowsHtml()}</div>
+      <button type="button" class="btn ghost" id="catAddNew" style="width:100%; margin-top:10px;">+ Add category</button>
+      <button type="button" class="btn primary" id="catSaveAll" style="width:100%; margin-top:14px;">Save</button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  function attachRowHandlers() {
+    overlay.querySelectorAll(".catdelete").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (categories.length <= 1) { alert("You need at least one category."); return; }
+        const idx = parseInt(btn.closest(".catrow").dataset.idx, 10);
+        categories.splice(idx, 1);
+        overlay.querySelector("#catList").innerHTML = rowsHtml();
+        attachRowHandlers();
+      });
+    });
+  }
+  attachRowHandlers();
+
+  overlay.querySelector("#catClose").addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+
+  overlay.querySelector("#catAddNew").addEventListener("click", () => {
+    categories.push({ id: uid(), name: "New category", color: "#7C5CBF", earnsDefault: false });
+    overlay.querySelector("#catList").innerHTML = rowsHtml();
+    attachRowHandlers();
+  });
+
+  overlay.querySelector("#catSaveAll").addEventListener("click", () => {
+    const updated = [];
+    overlay.querySelectorAll(".catrow").forEach(row => {
+      const idx = parseInt(row.dataset.idx, 10);
+      const name = row.querySelector(".catname").value.trim() || categories[idx].name;
+      const color = row.querySelector(".catcolor").value;
+      updated.push({ ...categories[idx], name, color });
+    });
+    categories = updated;
+    save();
+    overlay.remove();
+    if (onDone) onDone();
+  });
+}
+
 /* ---------- Add/edit sheet ---------- */
 function openSheet(ev, isNew=false) {
   const isEdit = !isNew && ev && events.includes(ev);
@@ -693,7 +756,11 @@ function openSheet(ev, isNew=false) {
         <div class="field"><label>Start time</label><input type="time" id="f-time" value="${pad2(Math.floor(draft.start/60))}:${pad2(draft.start%60)}" /></div>
       </div>
       <div class="field"><label>Duration (minutes)</label><input type="number" id="f-duration" value="${draft.duration}" min="5" step="5" /></div>
-      <div class="field"><label>Category</label>
+      <div class="field">
+        <label style="display:flex; align-items:center; justify-content:space-between;">
+          <span>Category</span>
+          <button type="button" id="manageCatsBtn" style="border:none; background:none; text-decoration:underline; cursor:pointer; font-size:0.75rem; color:var(--ink-soft); padding:0;">Edit categories</button>
+        </label>
         <div class="chiprow" id="f-cats">
           ${categories.map(c=>`<div class="chip ${c.id===draft.categoryId?"selected":""}" data-cat="${c.id}"><span class="swatch" style="background:${c.color}"></span>${c.name}</div>`).join("")}
         </div>
@@ -753,13 +820,26 @@ function openSheet(ev, isNew=false) {
   document.body.appendChild(overlay);
 
   let chosenCat = draft.categoryId;
-  overlay.querySelectorAll("[data-cat]").forEach(chip=>{
-    chip.addEventListener("click", ()=>{
-      chosenCat = chip.dataset.cat;
-      overlay.querySelectorAll("[data-cat]").forEach(c=>c.classList.remove("selected"));
-      chip.classList.add("selected");
-      const cat = categoryOf(chosenCat);
-      overlay.querySelector("#f-money").checked = !!cat.earnsDefault;
+
+  function attachCatChipHandlers() {
+    overlay.querySelectorAll("[data-cat]").forEach(chip=>{
+      chip.addEventListener("click", ()=>{
+        chosenCat = chip.dataset.cat;
+        overlay.querySelectorAll("[data-cat]").forEach(c=>c.classList.remove("selected"));
+        chip.classList.add("selected");
+        const cat = categoryOf(chosenCat);
+        overlay.querySelector("#f-money").checked = !!cat.earnsDefault;
+      });
+    });
+  }
+  attachCatChipHandlers();
+
+  overlay.querySelector("#manageCatsBtn").addEventListener("click", () => {
+    openCategoryManager(() => {
+      if (!categories.find(c => c.id === chosenCat)) chosenCat = categories[0].id;
+      const catsContainer = overlay.querySelector("#f-cats");
+      catsContainer.innerHTML = categories.map(c=>`<div class="chip ${c.id===chosenCat?"selected":""}" data-cat="${c.id}"><span class="swatch" style="background:${c.color}"></span>${c.name}</div>`).join("");
+      attachCatChipHandlers();
     });
   });
 
