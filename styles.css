@@ -488,6 +488,29 @@ button {
   font-size: 0.9rem;
 }
 
+.drag-ghost {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--accent);
+  opacity: 0.35;
+  border: 2px dashed var(--accent);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.drag-ghost-label {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  right: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  pointer-events: none;
+}
+
 
 /* =========================================================
    MONTH VIEW

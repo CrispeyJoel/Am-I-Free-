@@ -570,6 +570,115 @@ function onScrollerScroll(e) {
   }, 80);
 }
 
+let dragState = null;
+
+function snapToQuarterHour(px) {
+  const rawMin = DAY_START_MIN + (px / HOUR_PX) * 60;
+  return Math.round(rawMin / 15) * 15;
+}
+
+function attachTimelineDragHandlers(daycolEl, date) {
+  const timeline = daycolEl.querySelector(".timeline");
+  if (!timeline) return;
+
+  let ghostEl = null;
+  let labelEl = null;
+  let longPressTimer = null;
+  let dragStarted = false;
+
+  function getOffsetY(evt) {
+    const rect = timeline.getBoundingClientRect();
+    const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+    return clientY - rect.top;
+  }
+
+  function startDrag(evt) {
+    if (evt.target.closest(".event") || evt.target.closest(".buffer") || evt.target.closest(".nowline")) return;
+
+    const startY = getOffsetY(evt);
+    const startMin = Math.max(DAY_START_MIN, Math.min(DAY_END_MIN, snapToQuarterHour(startY)));
+
+    dragState = { date, startMin, currentMin: startMin + 30 };
+    dragStarted = true;
+
+    ghostEl = document.createElement("div");
+    ghostEl.className = "drag-ghost";
+    labelEl = document.createElement("div");
+    labelEl.className = "drag-ghost-label";
+    ghostEl.appendChild(labelEl);
+    timeline.appendChild(ghostEl);
+
+    updateGhost();
+  }
+
+  function updateGhost() {
+    if (!ghostEl || !dragState) return;
+    const top = (dragState.startMin - DAY_START_MIN) / 60 * HOUR_PX;
+    const bottom = (dragState.currentMin - DAY_START_MIN) / 60 * HOUR_PX;
+    const height = Math.max(bottom - top, HOUR_PX / 4);
+    ghostEl.style.top = `${top}px`;
+    ghostEl.style.height = `${height}px`;
+    labelEl.textContent = `${minToLabel(dragState.startMin)} – ${minToLabel(dragState.currentMin)}`;
+  }
+
+  function moveDrag(evt) {
+    if (!dragStarted || !dragState) return;
+    evt.preventDefault();
+    const y = getOffsetY(evt);
+    const minutes = snapToQuarterHour(y);
+    dragState.currentMin = Math.max(dragState.startMin + 15, Math.min(DAY_END_MIN + 60, minutes));
+    updateGhost();
+  }
+
+  function endDrag() {
+    clearTimeout(longPressTimer);
+    if (!dragStarted || !dragState) { dragStarted = false; return; }
+
+    const finalStart = dragState.startMin;
+    const finalEnd = dragState.currentMin;
+    const finalDate = dragState.date;
+
+    if (ghostEl) ghostEl.remove();
+    ghostEl = null; labelEl = null; dragState = null; dragStarted = false;
+
+    const draft = {
+      id: uid(), seriesId: uid(),
+      title: "",
+      categoryId: categories[0].id,
+      dateISO: iso(finalDate),
+      allDay: false,
+      start: finalStart,
+      duration: Math.max(15, finalEnd - finalStart),
+      bufferBefore: 0,
+      bufferAfter: 0,
+      reminder: "30m",
+      mandatory: true,
+      earnsMoney: false,
+      recurrence: "none"
+    };
+    openSheet(draft, true);
+  }
+
+  function onPointerDown(evt) {
+    if (evt.target.closest(".event") || evt.target.closest(".buffer")) return;
+    longPressTimer = setTimeout(() => startDrag(evt), 350);
+  }
+  function onPointerCancel() {
+    clearTimeout(longPressTimer);
+    if (dragStarted) endDrag();
+  }
+
+  timeline.addEventListener("touchstart", onPointerDown, { passive: true });
+  timeline.addEventListener("touchmove", moveDrag, { passive: false });
+  timeline.addEventListener("touchend", endDrag);
+  timeline.addEventListener("touchcancel", onPointerCancel);
+
+  timeline.addEventListener("mousedown", onPointerDown);
+  timeline.addEventListener("mousemove", moveDrag);
+  timeline.addEventListener("mouseup", endDrag);
+  timeline.addEventListener("mouseleave", onPointerCancel);
+}
+
 function tickNowLine() {
   clearInterval(window._nowTick);
   window._nowTick = setInterval(()=>{
@@ -698,6 +807,10 @@ function attachHandlers() {
   });
   const scroller = document.getElementById("scroller");
   if (scroller) scroller.addEventListener("scroll", onScrollerScroll);
+
+  document.querySelectorAll(".daycol").forEach((el, idx) => {
+    if (view === "day") attachTimelineDragHandlers(el, addDays(weekStart, idx));
+  });
 
   const qa = document.getElementById("quickadd");
   const qi = document.getElementById("quickinput");
