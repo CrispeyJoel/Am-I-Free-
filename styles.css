@@ -907,6 +907,10 @@ button {
   font-size: 0.8rem;
   font-weight: 600;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 #voicebtn.recording {
