@@ -428,17 +428,6 @@ button {
   background: var(--danger);
 }
 
-.nowline::before {
-  content: "";
-  position: absolute;
-  right: 100%;
-  top: -3px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--danger);
-}
-
 .nowline-label {
   position: absolute;
   left: 0;
