@@ -429,7 +429,8 @@ function renderDayCol(date) {
   for (const ev of evs) {
     const cat = categoryOf(ev.categoryId);
     const top = (ev.start - DAY_START_MIN)/60*HOUR_PX;
-    const height = Math.max(ev.duration/60*HOUR_PX, 24);
+    // const height = Math.max(ev.duration/60*HOUR_PX, 24);
+    const height = Math.max(ev.duration/60*HOUR_PX, 40);
     const bTop = (ev.start - ev.bufferBefore - DAY_START_MIN)/60*HOUR_PX;
     const bHeightBefore = ev.bufferBefore/60*HOUR_PX;
     const bTopAfter = (ev.start + ev.duration - DAY_START_MIN)/60*HOUR_PX;
@@ -898,7 +899,7 @@ function openDeleteChoice(draft, parentOverlay, targetDateISO) {
         This event repeats. What would you like to do?
       </p>
       <div style="display:flex; flex-direction:column; gap:10px;">
-        <button class="btn ghost" id="delCancel">Cancel — don't delete anything</button>
+        <button class="btn ghost" id="delCancel">Cancel</button>
         <button class="btn ghost" id="delOne">Delete just this date (${targetDateISO})</button>
         <button class="btn" id="delAll" style="background:var(--danger); color:white;">Delete this and all future dates</button>
       </div>
