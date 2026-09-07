@@ -851,9 +851,9 @@ button {
 }
 
 .btn.danger {
-  background: transparent;
+  background: var(--danger);
 
-  color: var(--danger);
+  color: white;
 }
 
 
