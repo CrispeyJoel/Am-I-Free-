@@ -135,14 +135,30 @@ function dateFromISO(dateStr) {
   return new Date(y, m - 1, d);
 }
 
+function getRecurrenceDays(ev) {
+  if (Number.isFinite(ev.recurrenceDays)) return ev.recurrenceDays;
+  if (ev.recurrence === "weekly") return 7;
+  if (ev.recurrence === "fortnightly") return 14;
+  return 0;
+}
+
 function occursOn(ev, date) {
   const anchor = dateFromISO(ev.dateISO);
   const diff = dayDiff(date, anchor);
 
   if (diff < 0) return false;
-  if (ev.recurrence === "weekly") return diff % 7 === 0;
-  if (ev.recurrence === "fortnightly") return diff % 14 === 0;
-  return diff === 0;
+
+  let matches;
+  if (ev.recurrence === "weekly") matches = diff % 7 === 0;
+  else if (ev.recurrence === "fortnightly") matches = diff % 14 === 0;
+  else matches = diff === 0;
+
+  if (!matches) return false;
+
+  const dStr = iso(date);
+  if (Array.isArray(ev.excludedDates) && ev.excludedDates.includes(dStr)) return false;
+
+  return true;
 }
 function eventsOnDate(date) { return events.filter(ev => occursOn(ev, date)); }
 
@@ -1218,31 +1234,28 @@ async function syncCloudData(user) {
   const row = document.getElementById("cloudstatus");
 
   try {
-    const localEvents = Array.isArray(events) ? events : [];
-    const localCategories = Array.isArray(categories) ? categories : DEFAULT_CATEGORIES;
-
     if (row) row.textContent = "Checking cloud calendar...";
-
-    const localBackupKey = `af_local_backup_${user.uid}`;
-    if (localEvents.length > 0) {
-      localStorage.setItem(localBackupKey, JSON.stringify({
-        list: localEvents,
-        categories: localCategories,
-        savedAt: Date.now()
-      }));
-    }
 
     if (unsubscribeCloudData) unsubscribeCloudData();
 
     unsubscribeCloudData = onSnapshot(dataRef, async snap => {
       try {
+        // Always back up whatever's currently in memory before touching it,
+        // so a bad or delayed remote read can never destroy real data.
+        if (Array.isArray(events) && events.length > 0) {
+          localStorage.setItem(`af_local_backup_${user.uid}`, JSON.stringify({
+            list: events,
+            categories,
+            savedAt: Date.now()
+          }));
+        }
+
         if (!snap.exists()) {
           await setDoc(dataRef, {
-            list: localEvents,
-            categories: localCategories,
+            list: Array.isArray(events) ? events : [],
+            categories: Array.isArray(categories) ? categories : DEFAULT_CATEGORIES,
             updatedAt: Date.now()
           });
-
           if (row) row.textContent = `Calendar backed up as ${user.email || "your account"}`;
           return;
         }
@@ -1251,24 +1264,22 @@ async function syncCloudData(user) {
         const remoteEvents = Array.isArray(remote.list) ? remote.list : [];
         const remoteCategories = Array.isArray(remote.categories) ? remote.categories : null;
 
-        if (remoteEvents.length === 0 && localEvents.length > 0) {
+        // If the cloud looks empty but we currently have real local data,
+        // treat the cloud as behind — push our data up instead of accepting
+        // the empty result as truth.
+        if (remoteEvents.length === 0 && Array.isArray(events) && events.length > 0) {
           suppressNextCloudPush = true;
-          events = localEvents;
-          categories = localCategories;
-
-          await setDoc(dataRef, {
-            list: events,
-            categories,
-            updatedAt: Date.now()
-          }, { merge: true });
-        } else {
-          suppressNextCloudPush = true;
-          events = remoteEvents;
-          if (remoteCategories) categories = remoteCategories;
-
-          localStorage.setItem("af_events", JSON.stringify(events));
-          localStorage.setItem("af_categories", JSON.stringify(categories));
+          await setDoc(dataRef, { list: events, categories, updatedAt: Date.now() }, { merge: true });
+          if (row) row.textContent = `Synced as ${user.email || "your account"}`;
+          return;
         }
+
+        suppressNextCloudPush = true;
+        events = remoteEvents;
+        if (remoteCategories) categories = remoteCategories;
+
+        localStorage.setItem("af_events", JSON.stringify(events));
+        localStorage.setItem("af_categories", JSON.stringify(categories));
 
         if (row) row.textContent = `Synced as ${user.email || "your account"}`;
         render();
