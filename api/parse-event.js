@@ -111,7 +111,7 @@ export default async function handler(req, res) {
     }
   }
 
-  const { text, timezone, todayISO, categories } = body;
+  const { text, timezone, todayISO, defaultDateISO, categories } = body;
 
   if (!text || !String(text).trim()) {
     return res.status(400).json({ error: "missing text" });
@@ -137,7 +137,8 @@ export default async function handler(req, res) {
   const prompt = `You are a calendar event parser. Extract event details from the user text into structured JSON.
 
 Context:
-- Today's Date: ${today} (${tz})
+- Today's actual date: ${today} (${tz})
+- If the user's sentence mentions no day, date, or relative time word at all (nothing like "today", "tomorrow", a weekday name, or a specific date), use this date instead: ${defaultDateISO || today}
 - Available Categories: ${catDescriptions}
 
 Title Extraction Examples:

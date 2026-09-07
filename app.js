@@ -330,6 +330,7 @@ async function parseQuickAddAI(text) {
       text,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       todayISO: iso(new Date()),
+      defaultDateISO: iso(selectedDate),
       categories: categories.map(c => ({ name: c.name, earnsDefault: !!c.earnsDefault }))
     })
   });
@@ -447,12 +448,18 @@ function renderDayCol(date) {
     const bHeightAfter = ev.bufferAfter/60*HOUR_PX;
     if (ev.bufferBefore>0) blocks += `<div class="buffer" style="top:${bTop}px;height:${bHeightBefore}px;color:${cat.color}"></div>`;
     if (ev.bufferAfter>0) blocks += `<div class="buffer" style="top:${bTopAfter}px;height:${bHeightAfter}px;color:${cat.color}"></div>`;
-    blocks += `<div class="event ${ev.mandatory?"":"optional"}" style="top:${top}px;height:${height}px;background:${cat.color};border-color:${cat.color}" data-edit="${ev.id}" data-date="${iso(date)}">
-      <div class="eventline">
-        <span class="title">${escapeHtml(ev.title)}</span>
-        <span class="meta">${minToLabel(ev.start)} · ${cat.name}</span>
-        ${ev.earnsMoney?`<span class="dollar">$</span>`:""}
-      </div>
+    const isCompact = ev.duration <= 45;
+    const eventInner = isCompact
+      ? `<div class="eventline">
+          <span class="title">${escapeHtml(ev.title)}</span>
+          <span class="meta">${minToLabel(ev.start)} · ${cat.name}</span>
+          ${ev.earnsMoney?`<span class="dollar">$</span>`:""}
+        </div>`
+      : `<div class="title">${escapeHtml(ev.title)}${ev.earnsMoney?`<span class="dollar">$</span>`:""}</div>
+         <div class="meta">${minToLabel(ev.start)} · ${cat.name}</div>`;
+
+    blocks += `<div class="event ${isCompact?"compact":""} ${ev.mandatory?"":"optional"}" style="top:${top}px;height:${height}px;background:${cat.color};border-color:${cat.color}" data-edit="${ev.id}" data-date="${iso(date)}">
+      ${eventInner}
     </div>`;
   }
   const nowMin = new Date().getHours()*60+new Date().getMinutes();
