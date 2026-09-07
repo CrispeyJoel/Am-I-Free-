@@ -381,7 +381,7 @@ function renderTopbar() {
         <button data-view="day" class="${view === "day" ? "active" : ""}">Week</button>
         <button data-view="month" class="${view === "month" ? "active" : ""}">Month</button>
       </div>
-      <button class="iconbtn" data-act="settings" title="Settings">Settings</button>
+      <button class="todaybtn" data-act="settings" title="Settings">Settings</button>
     </div>
 
     <div class="synctag ${syncFailed ? "fail" : ""}" id="synctag">${renderSyncTag()}</div>
@@ -761,7 +761,6 @@ function settingsPanelContent() {
       <h3>Notifications</h3>
       <button class="settings-btn ${pushEnabled ? "active" : ""}" id="settingsPushBtn">
         <span>${pushEnabled ? "Push notifications: On" : "Push notifications: Off"}</span>
-        <span>${pushEnabled ? "✓" : ""}</span>
       </button>
     </div>
 
