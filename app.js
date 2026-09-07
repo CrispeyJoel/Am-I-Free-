@@ -186,6 +186,12 @@ function getRecurrenceDays(ev) {
 }
 
 function occursOn(ev, date) {
+  const dStr = iso(date);
+
+  if (ev.allDay && ev.endDateISO) {
+    return dStr >= ev.dateISO && dStr <= ev.endDateISO;
+  }
+
   const anchor = dateFromISO(ev.dateISO);
   const diff = dayDiff(date, anchor);
 
@@ -198,7 +204,6 @@ function occursOn(ev, date) {
 
   if (!matches) return false;
 
-  const dStr = iso(date);
   if (Array.isArray(ev.excludedDates) && ev.excludedDates.includes(dStr)) return false;
 
   return true;
@@ -1129,6 +1134,10 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
         <div class="field"><label>${t("startTime")}</label><input type="time" id="f-time" value="${pad2(Math.floor(draft.start/60))}:${pad2(draft.start%60)}" /></div>
         <div class="field"><label>${t("endTime")}</label><input type="time" id="f-endtime" value="${pad2(Math.floor(((draft.start+draft.duration)%1440)/60))}:${pad2((draft.start+draft.duration)%60)}" /></div>
       </div>
+      <div class="row2" id="f-allday-daterow" style="${draft.allDay?"":"display:none;"}">
+        <div class="field"><label>${t("startDay")}</label><input type="date" id="f-alldaystart" value="${draft.dateISO}" /></div>
+        <div class="field"><label>${t("endDay")}</label><input type="date" id="f-alldayend" value="${draft.endDateISO || draft.dateISO}" /></div>
+      </div>
       <div class="field">
         <label style="display:flex; align-items:center; justify-content:space-between;">
           <span>${t("category")}</span>
@@ -1210,10 +1219,12 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
   const alldayCheckbox = overlay.querySelector("#f-allday");
   const timeRow = overlay.querySelector("#f-timerow");
   const bufferRow = overlay.querySelector("#f-bufferrow");
+  const alldayDateRow = overlay.querySelector("#f-allday-daterow");
   alldayCheckbox.addEventListener("change", () => {
     const isAllDay = alldayCheckbox.checked;
     timeRow.style.display = isAllDay ? "none" : "";
     bufferRow.style.display = isAllDay ? "none" : "";
+    alldayDateRow.style.display = isAllDay ? "" : "none";
   });
 
   overlay.querySelector("#manageCatsBtn").addEventListener("click", () => {
@@ -1242,6 +1253,8 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
   overlay.querySelector("#f-save").addEventListener("click", ()=>{
     const isAllDay = overlay.querySelector("#f-allday").checked;
     let startMin = 0, duration = 0, bufferBefore = 0, bufferAfter = 0;
+    let dateISO = overlay.querySelector("#f-date").value;
+    let endDateISO = null;
 
     if (!isAllDay) {
       const [hh,mm] = overlay.querySelector("#f-time").value.split(":").map(Number);
@@ -1252,12 +1265,17 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       duration = Math.max(5, endMin - startMin);
       bufferBefore = parseInt(overlay.querySelector("#f-bufbefore").value,10) || 0;
       bufferAfter = parseInt(overlay.querySelector("#f-bufafter").value,10) || 0;
+    } else {
+      dateISO = overlay.querySelector("#f-alldaystart").value;
+      endDateISO = overlay.querySelector("#f-alldayend").value;
+      if (endDateISO < dateISO) endDateISO = dateISO; // guard against end before start
     }
 
     const updated = {
       ...draft,
       title: overlay.querySelector("#f-title").value.trim() || "Untitled",
-      dateISO: overlay.querySelector("#f-date").value,
+      dateISO: dateISO,
+      endDateISO: isAllDay ? endDateISO : null,
       allDay: isAllDay,
       start: startMin,
       duration: duration,
