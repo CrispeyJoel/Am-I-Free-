@@ -87,10 +87,13 @@ const DAY_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_ALIASES = { sun:0, mon:1, tue:2, tues:2, wed:3, weds:3, thu:4, thur:4, thurs:4, fri:5, sat:6 };
 
 /* ---------- State ---------- */
-let categories = load("af_categories", DEFAULT_CATEGORIES);
-if (!categories.some(c => c.special === "love")) {
-  categories = [...categories, LOVE_CATEGORY];
+function ensureLoveCategory(cats) {
+  const list = Array.isArray(cats) ? cats : [];
+  if (!list.some(c => c.special === "love")) return [...list, LOVE_CATEGORY];
+  return list;
 }
+
+let categories = ensureLoveCategory(load("af_categories", DEFAULT_CATEGORIES));
 let events = load("af_events", []);
 let selectedDate = startOfDay(new Date());
 let weekStart = startOfWeek(selectedDate);
@@ -1613,7 +1616,7 @@ async function syncCloudData(user) {
 
         suppressNextCloudPush = true;
         events = remoteEvents;
-        if (remoteCategories) categories = remoteCategories;
+        if (remoteCategories) categories = ensureLoveCategory(remoteCategories);
 
         localStorage.setItem("af_events", JSON.stringify(events));
         localStorage.setItem("af_categories", JSON.stringify(categories));
