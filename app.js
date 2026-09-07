@@ -572,9 +572,9 @@ function onScrollerScroll(e) {
 
 let dragState = null;
 
-function snapToQuarterHour(px) {
+function snapToHalfHour(px) {
   const rawMin = DAY_START_MIN + (px / HOUR_PX) * 60;
-  return Math.round(rawMin / 15) * 15;
+  return Math.round(rawMin / 30) * 30;
 }
 
 function attachTimelineDragHandlers(daycolEl, date) {
@@ -596,7 +596,7 @@ function attachTimelineDragHandlers(daycolEl, date) {
     if (evt.target.closest(".event") || evt.target.closest(".buffer") || evt.target.closest(".nowline")) return;
 
     const startY = getOffsetY(evt);
-    const startMin = Math.max(DAY_START_MIN, Math.min(DAY_END_MIN, snapToQuarterHour(startY)));
+    const startMin = Math.max(DAY_START_MIN, Math.min(DAY_END_MIN, snapToHalfHour(startY)));
 
     dragState = { date, startMin, currentMin: startMin + 30 };
     dragStarted = true;
@@ -625,7 +625,7 @@ function attachTimelineDragHandlers(daycolEl, date) {
     if (!dragStarted || !dragState) return;
     evt.preventDefault();
     const y = getOffsetY(evt);
-    const minutes = snapToQuarterHour(y);
+    const minutes = snapToHalfHour(y);
     dragState.currentMin = Math.max(dragState.startMin + 15, Math.min(DAY_END_MIN + 60, minutes));
     updateGhost();
   }
@@ -648,7 +648,7 @@ function attachTimelineDragHandlers(daycolEl, date) {
       dateISO: iso(finalDate),
       allDay: false,
       start: finalStart,
-      duration: Math.max(15, finalEnd - finalStart),
+      duration: Math.max(30, finalEnd - finalStart),
       bufferBefore: 0,
       bufferAfter: 0,
       reminder: "30m",
