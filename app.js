@@ -493,7 +493,8 @@ function renderDayCol(date) {
     ${alldayHtml}
     <div class="timeline" style="height:${((DAY_END_MIN-DAY_START_MIN)/60+1)*HOUR_PX}px">
       ${hours}
-      <div class="eventlayer">${blocks}${nowLine}</div>
+      <div class="eventlayer">${blocks}</div>
+      ${nowLine}
     </div>
   </div>`;
 }
