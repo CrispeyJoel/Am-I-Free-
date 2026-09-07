@@ -474,7 +474,11 @@ function renderDayCol(date) {
   }
   const nowMin = new Date().getHours()*60+new Date().getMinutes();
   const showNow = sameDay(date,new Date()) && nowMin>=DAY_START_MIN && nowMin<=DAY_END_MIN;
-  const nowLine = showNow ? `<div class="nowline" id="nowline" style="top:${(nowMin-DAY_START_MIN)/60*HOUR_PX}px"></div>` : "";
+  const nowTop = (nowMin-DAY_START_MIN)/60*HOUR_PX;
+  const nowLine = showNow
+    ? `<div class="nowline" id="nowline" style="top:${nowTop}px"></div>
+       <div class="nowline-label" id="nowlineLabel" style="top:${nowTop}px">${minToLabel(nowMin)}</div>`
+    : "";
   const alldayHtml = alldayEvs.length
     ? `<div class="allday-strip">${alldayEvs.map(ev => {
         const cat = categoryOf(ev.categoryId);
@@ -552,11 +556,12 @@ function onScrollerScroll(e) {
 function tickNowLine() {
   clearInterval(window._nowTick);
   window._nowTick = setInterval(()=>{
+    const nowMin = new Date().getHours()*60+new Date().getMinutes();
+    const nowTop = (nowMin-DAY_START_MIN)/60*HOUR_PX;
     const line = document.getElementById("nowline");
-    if (line) {
-      const nowMin = new Date().getHours()*60+new Date().getMinutes();
-      line.style.top = `${(nowMin-DAY_START_MIN)/60*HOUR_PX}px`;
-    }
+    if (line) line.style.top = `${nowTop}px`;
+    const label = document.getElementById("nowlineLabel");
+    if (label) { label.style.top = `${nowTop}px`; label.textContent = minToLabel(nowMin); }
     const banner = document.querySelector(".freebanner");
     if (banner) banner.outerHTML = renderFreeBanner();
   }, 60000);

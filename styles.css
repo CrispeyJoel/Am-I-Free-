@@ -422,7 +422,7 @@ button {
 }
 .nowline {
   position: absolute;
-  left: 0;
+  left: 44px;
   right: 0;
   height: 2px;
   background: var(--danger);
@@ -431,12 +431,27 @@ button {
 .nowline::before {
   content: "";
   position: absolute;
-  left: -4px;
+  right: 100%;
   top: -3px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--danger);
+}
+
+.nowline-label {
+  position: absolute;
+  left: 0;
+  width: 40px;
+  transform: translateY(-50%);
+  background: var(--danger);
+  color: white;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 2px 0;
+  border-radius: 4px;
+  line-height: 1;
 }
 
 .emptyday {
