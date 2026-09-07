@@ -443,6 +443,41 @@ button {
   line-height: 1;
 }
 
+.event.love-cat {
+  background: linear-gradient(135deg, #ff8fc7, #ff4fa3) !important;
+  position: relative;
+  overflow: visible;
+}
+
+.event.love-cat::before,
+.event.love-cat::after {
+  content: "❤️";
+  position: absolute;
+  font-size: 10px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.event.love-cat::before {
+  top: -6px;
+  left: -4px;
+}
+
+.event.love-cat::after {
+  bottom: -6px;
+  right: -4px;
+}
+
+.allday-chip.love-cat {
+  background: linear-gradient(135deg, #ff8fc7, #ff4fa3) !important;
+  position: relative;
+}
+
+.allday-chip.love-cat::before {
+  content: "❤️";
+  margin-right: 2px;
+}
+
 .emptyday {
   text-align: center;
 

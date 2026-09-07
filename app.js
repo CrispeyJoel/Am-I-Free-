@@ -73,18 +73,24 @@ setPersistence(auth, browserLocalPersistence).catch(error => {
 const DAY_START_MIN = 6 * 60;   // 6:00am
 const DAY_END_MIN = 23 * 60;    // 11:00pm
 const HOUR_PX = 56;
+const LOVE_CATEGORY = { id: "love", name: "❤️", color: "#FF4FA3", earnsDefault: false, special: "love" };
+
 const DEFAULT_CATEGORIES = [
   { id: "work",     name: "Work",     color: "#3F7D58", earnsDefault: true  },
   { id: "tutoring", name: "Tutoring", color: "#2C6E7F", earnsDefault: true  },
   { id: "friends",  name: "Friends",  color: "#3B5BA5", earnsDefault: false },
   { id: "family",   name: "Family",   color: "#8B5E3C", earnsDefault: false },
-  { id: "personal", name: "Personal", color: "#7C5CBF", earnsDefault: false }
+  { id: "personal", name: "Personal", color: "#7C5CBF", earnsDefault: false },
+  LOVE_CATEGORY
 ];
 const DAY_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_ALIASES = { sun:0, mon:1, tue:2, tues:2, wed:3, weds:3, thu:4, thur:4, thurs:4, fri:5, sat:6 };
 
 /* ---------- State ---------- */
 let categories = load("af_categories", DEFAULT_CATEGORIES);
+if (!categories.some(c => c.special === "love")) {
+  categories = [...categories, LOVE_CATEGORY];
+}
 let events = load("af_events", []);
 let selectedDate = startOfDay(new Date());
 let weekStart = startOfWeek(selectedDate);
@@ -450,6 +456,7 @@ function renderDayCol(date) {
   let blocks = "";
   for (const ev of timedEvs) {
     const cat = categoryOf(ev.categoryId);
+    const isLove = cat.special === "love";
     const top = (ev.start - DAY_START_MIN)/60*HOUR_PX;
     const height = Math.max(ev.duration/60*HOUR_PX, 24);
     const bTop = (ev.start - ev.bufferBefore - DAY_START_MIN)/60*HOUR_PX;
@@ -468,7 +475,7 @@ function renderDayCol(date) {
       : `<div class="title">${escapeHtml(ev.title)}${ev.earnsMoney?`<span class="dollar">$</span>`:""}</div>
          <div class="meta">${minToLabel(ev.start)} · ${cat.name}</div>`;
 
-    blocks += `<div class="event ${isCompact?"compact":""} ${ev.mandatory?"":"optional"}" style="top:${top}px;height:${height}px;background:${cat.color};border-color:${cat.color}" data-edit="${ev.id}" data-date="${iso(date)}">
+        blocks += `<div class="event ${isCompact?"compact":""} ${isLove?"love-cat":""} ${ev.mandatory?"":"optional"}" style="top:${top}px;height:${height}px;background:${cat.color};border-color:${cat.color}" data-edit="${ev.id}" data-date="${iso(date)}">
       ${eventInner}
     </div>`;
   }
@@ -482,7 +489,8 @@ function renderDayCol(date) {
   const alldayHtml = alldayEvs.length
     ? `<div class="allday-strip">${alldayEvs.map(ev => {
         const cat = categoryOf(ev.categoryId);
-        return `<div class="allday-chip ${ev.mandatory?"":"optional"}" style="background:${cat.color};border-color:${cat.color}" data-edit="${ev.id}" data-date="${iso(date)}">
+        const isLove = cat.special === "love";
+        return `<div class="allday-chip ${isLove?"love-cat":""} ${ev.mandatory?"":"optional"}" style="background:${cat.color};border-color:${cat.color}" data-edit="${ev.id}" data-date="${iso(date)}">
           <span>${escapeHtml(ev.title)}</span>
           ${ev.earnsMoney?`<span class="dollar">$</span>`:""}
         </div>`;
