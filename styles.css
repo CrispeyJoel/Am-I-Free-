@@ -872,12 +872,13 @@ button {
   border: 1px solid var(--line);
   background: var(--bg);
   color: var(--accent);
-  width: 50px;
   min-width: 50px;
   height: 50px;
+  padding: 0 14px;
   border-radius: 10px;
   font-size: 0.8rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 #voicebtn.recording {
