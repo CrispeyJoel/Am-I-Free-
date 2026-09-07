@@ -1,4 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { STRINGS, VOICE_LOCALE } from "./i18n.js";
 
 import {
   getAuth,
@@ -51,6 +52,18 @@ let unsubscribeCloudData = null;
 let unsubscribeUserDoc = null;
 let lastSyncedAt = null;
 let syncFailed = false;
+let currentLang = localStorage.getItem("af_lang") || "en";
+
+function t(key) {
+  return (STRINGS[currentLang] && STRINGS[currentLang][key]) || STRINGS.en[key] || key;
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem("af_lang", lang);
+  render();
+  refreshSettingsPanel();
+}
 
 setPersistence(auth, browserLocalPersistence).catch(error => {
   console.error("Firebase persistence failed:", error);
@@ -202,19 +215,17 @@ function mergedIntervals(date) {
   return out;
 }
 function freeStatusNow() {
-  const now = new Date();
-  if (!sameDay(now, selectedDate) && !sameDay(now, new Date())) { /* n/a */ }
   const today = new Date();
   const nowMin = today.getHours()*60 + today.getMinutes();
   const merged = mergedIntervals(today);
   const cur = merged.find(iv => nowMin >= iv.start && nowMin < iv.end);
-  if (cur) return { busy:true, text:`Busy until <b>${minToLabel(cur.end)}</b>` };
+  if (cur) return { busy:true, text:`${t("busyUntil")} <b>${minToLabel(cur.end)}</b>` };
   const next = merged.find(iv => iv.start > nowMin);
-  if (!next) return { busy:false, text:`Free for the rest of the day` };
+  if (!next) return { busy:false, text: t("freeRest") };
   const mins = next.start - nowMin;
   const hrs = Math.floor(mins/60), rem = mins%60;
   const dur = hrs>0 ? `${hrs}h ${rem}m` : `${rem}m`;
-  return { busy:false, text:`Free for <b>${dur}</b> - next at ${minToLabel(next.start)}` };
+  return { busy:false, text:`${t("freeFor")} <b>${dur}</b> - ${t("nextAt")} ${minToLabel(next.start)}` };
 }
 
 /* ---------- Quick add parsing (local fallback) ---------- */
@@ -376,12 +387,12 @@ function renderTopbar() {
     </div>
 
     <div class="topbar-actions">
-      <button class="todaybtn" data-act="today" title="Back to today">Today</button>
+      <button class="todaybtn" data-act="today" title="${t("today")}">${t("today")}</button>
       <div class="viewtoggle">
-        <button data-view="day" class="${view === "day" ? "active" : ""}">Week</button>
-        <button data-view="month" class="${view === "month" ? "active" : ""}">Month</button>
+        <button data-view="day" class="${view === "day" ? "active" : ""}">${t("week")}</button>
+        <button data-view="month" class="${view === "month" ? "active" : ""}">${t("month")}</button>
       </div>
-      <button class="todaybtn" data-act="settings" title="Settings">Settings</button>
+      <button class="todaybtn" data-act="settings" title="${t("settings")}">${t("settings")}</button>
     </div>
 
     <div class="synctag ${syncFailed ? "fail" : ""}" id="synctag">${renderSyncTag()}</div>
@@ -389,9 +400,9 @@ function renderTopbar() {
 }
 
 function renderSyncTag() {
-  if (!currentUser) return "Not signed in";
-  if (syncFailed) return "Cloud save failed";
-  return lastSyncedAt ? `Synced ✓ ${formatSyncTime(lastSyncedAt)}` : "Signed in";
+  if (!currentUser) return t("notSignedIn");
+  if (syncFailed) return t("cloudSaveFailed");
+  return lastSyncedAt ? `${t("syncedAt")} ${formatSyncTime(lastSyncedAt)}` : t("signedIn");
 }
 
 function renderFreeBanner() {
@@ -474,31 +485,12 @@ function renderMonth() {
 
 function renderQuickBar() {
   return `<div class="quickbar">
-    <button
-      id="voicebtn"
-      type="button"
-      title="Add event by voice"
-      aria-label="Add event by voice"
-    >
-      <span id="voiceLabel">Voice</span>
+    <button id="voicebtn" type="button" title="${t("voice")}" aria-label="${t("voice")}">
+      <span id="voiceLabel">${t("voice")}</span>
       <span id="aiStatusDot" class="ai-status-dot ${aiStatus}"></span>
     </button>
-
-    <input
-      id="quickinput"
-      type="text"
-      placeholder="Quick add"
-      autocomplete="off"
-    />
-
-    <button
-      id="quickadd"
-      type="button"
-      title="Add"
-      aria-label="Add event"
-    >
-      +
-    </button>
+    <input id="quickinput" type="text" placeholder="${t("quickAddPlaceholder")}" autocomplete="off" />
+    <button id="quickadd" type="button" title="${t("add")}" aria-label="${t("add")}">+</button>
   </div>`;
 }
 
@@ -568,7 +560,7 @@ function startVoiceInput() {
 
   voiceRecognition = new SpeechRecognition();
 
-  voiceRecognition.lang = "en-AU";
+  voiceRecognition.lang = VOICE_LOCALE[currentLang] || "en-AU";
   voiceRecognition.continuous = false;
   voiceRecognition.interimResults = false;
   voiceRecognition.maxAlternatives = 1;
@@ -580,7 +572,7 @@ function startVoiceInput() {
   if (button) {
       button.classList.add("recording");
       const label = document.getElementById("voiceLabel");
-      if (label) label.textContent = "Voice";
+      if (label) label.textContent = t("voice");
     }
 
   voiceRecognition.onresult = (event) => {
@@ -612,7 +604,7 @@ function startVoiceInput() {
       if (button) {
         button.classList.remove("recording");
         const label = document.getElementById("voiceLabel");
-        if (label) label.textContent = "Voice";
+        if (label) label.textContent = t("voice");
       }
 
       voiceRecognition = null;
@@ -744,34 +736,44 @@ let settingsPanelEl = null;
 function settingsPanelContent() {
   return `
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
-      <h2 style="margin:0;">Settings</h2>
+      <h2 style="margin:0;">${t("settings")}</h2>
       <button id="settingsClose" style="border:none; background:none; font-size:1.3rem; line-height:1; color:var(--ink-soft); padding:4px;">×</button>    </div>
 
     <div class="settings-section">
-      <h3>Cloud account</h3>
+      <h3>${t("cloudAccount")}</h3>
       <div id="cloudstatus" class="cloudstatus" style="text-align:left; padding:0 0 10px;">
         ${currentUser ? `Synced as ${currentUser.displayName || currentUser.email}${lastSyncedAt ? ` · last saved ${formatSyncTime(lastSyncedAt)}` : ""}` : "Sign in to back up your calendar and enable notifications"}
       </div>
       <button class="settings-btn" id="settingsAuthBtn">
-        <span>${currentUser ? "Sign out" : "Sign in"}</span>
+        <span>${currentUser ? t("signOut") : t("signIn")}</span>
         <span>›</span>
       </button>
     </div>
 
     <div class="settings-section">
-      <h3>Notifications</h3>
+      <h3>${t("notifications")}</h3>
       <button class="settings-btn ${pushEnabled ? "active" : ""}" id="settingsPushBtn">
-        <span>${pushEnabled ? "Push notifications: On" : "Push notifications: Off"}</span>
+        <span>${pushEnabled ? t("pushOn") : t("pushOff")}</span>
       </button>
     </div>
 
     <div class="settings-section">
-      <h3>Backup</h3>
+      <h3>${t("language")}</h3>
+      <select id="settingsLangSelect" style="width:100%; min-height:44px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--ink); font-size:16px;">
+        <option value="en" ${currentLang==="en"?"selected":""}>English</option>
+        <option value="de" ${currentLang==="de"?"selected":""}>Deutsch</option>
+        <option value="mk" ${currentLang==="mk"?"selected":""}>Македонски</option>
+        <option value="sr" ${currentLang==="sr"?"selected":""}>Srpski</option>
+      </select>
+    </div>
+
+    <div class="settings-section">
+      <h3>${t("backup")}</h3>
       <button class="settings-btn" id="settingsExportBtn">
-        <span>Export backup</span>
+        <span>${t("exportBackup")}</span>
       </button>
       <button class="settings-btn" id="settingsImportBtn">
-        <span>Import backup</span>
+        <span>${t("importBackup")}</span>
       </button>
       <input type="file" id="settingsImportFile" accept="application/json" style="display:none;" />
     </div>
@@ -792,6 +794,8 @@ function wireSettingsPanel(panel) {
   });
 
   panel.querySelector("#settingsPushBtn").addEventListener("click", () => toggleNotifications());
+
+  panel.querySelector("#settingsLangSelect").addEventListener("change", (e) => setLang(e.target.value));
 
   panel.querySelector("#settingsExportBtn").addEventListener("click", exportBackup);
 
@@ -841,12 +845,12 @@ function openCategoryManager(onDone) {
   overlay.innerHTML = `
     <div class="sheet">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-        <h2 style="margin:0;">Manage categories</h2>
+        <h2 style="margin:0;">${t("manageCategories")}</h2>
         <button id="catClose" style="border:none; background:none; font-size:1.3rem; line-height:1; color:var(--ink-soft); padding:4px;">×</button>
       </div>
       <div id="catList">${rowsHtml()}</div>
-      <button type="button" class="btn ghost" id="catAddNew" style="width:100%; margin-top:10px;">+ Add category</button>
-      <button type="button" class="btn primary" id="catSaveAll" style="width:100%; margin-top:14px;">Save</button>
+      <button type="button" class="btn ghost" id="catAddNew" style="width:100%; margin-top:10px;">${t("addCategory")}</button>
+      <button type="button" class="btn primary" id="catSaveAll" style="width:100%; margin-top:14px;">${t("save")}</button>
     </div>
   `;
 
@@ -894,14 +898,12 @@ function openDeleteChoice(draft, parentOverlay, targetDateISO) {
   overlay.className = "overlay";
   overlay.innerHTML = `
     <div class="sheet">
-      <h2>Delete this repeating event</h2>
-      <p style="font-size:0.88rem; color:var(--ink-soft); margin:0 0 16px;">
-        This event repeats. What would you like to do?
-      </p>
+      <h2>${t("deleteRepeating")}</h2>
+      <p style="font-size:0.88rem; color:var(--ink-soft); margin:0 0 16px;">${t("deleteRepeatingDesc")}</p>
       <div style="display:flex; flex-direction:column; gap:10px;">
-        <button class="btn ghost" id="delCancel">Cancel</button>
-        <button class="btn ghost" id="delOne">Delete just this date (${targetDateISO})</button>
-        <button class="btn" id="delAll" style="background:var(--danger); color:white;">Delete this and all future dates</button>
+        <button class="btn ghost" id="delCancel">${t("cancelDelete")}</button>
+        <button class="btn ghost" id="delOne">${t("deleteJustThis")} (${targetDateISO})</button>
+        <button class="btn" id="delAll" style="background:var(--danger); color:white;">${t("deleteAllFuture")}</button>
       </div>
     </div>
   `;
@@ -949,17 +951,17 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
   overlay.className = "overlay";
   overlay.innerHTML = `
     <div class="sheet">
-      <h2>${isEdit ? "Edit event" : "New event"}</h2>
-      <div class="field"><label>Title</label><input type="text" id="f-title" value="${escapeHtml(draft.title)}" /></div>
-      <div class="field"><label>Date</label><input type="date" id="f-date" value="${draft.dateISO}" /></div>
+      <h2>${isEdit ? t("editEvent") : t("newEvent")}</h2>
+      <div class="field"><label>${t("titleLabel")}</label><input type="text" id="f-title" value="${escapeHtml(draft.title)}" /></div>
+      <div class="field"><label>${t("dateLabel")}</label><input type="date" id="f-date" value="${draft.dateISO}" /></div>
       <div class="row2">
-        <div class="field"><label>Start time</label><input type="time" id="f-time" value="${pad2(Math.floor(draft.start/60))}:${pad2(draft.start%60)}" /></div>
-        <div class="field"><label>End time</label><input type="time" id="f-endtime" value="${pad2(Math.floor(((draft.start+draft.duration)%1440)/60))}:${pad2((draft.start+draft.duration)%60)}" /></div>
+        <div class="field"><label>${t("startTime")}</label><input type="time" id="f-time" value="${pad2(Math.floor(draft.start/60))}:${pad2(draft.start%60)}" /></div>
+        <div class="field"><label>${t("endTime")}</label><input type="time" id="f-endtime" value="${pad2(Math.floor(((draft.start+draft.duration)%1440)/60))}:${pad2((draft.start+draft.duration)%60)}" /></div>
       </div>
       <div class="field">
         <label style="display:flex; align-items:center; justify-content:space-between;">
-          <span>Category</span>
-          <button type="button" id="manageCatsBtn" style="border:none; background:none; text-decoration:underline; cursor:pointer; font-size:0.75rem; color:var(--ink-soft); padding:0;">Edit categories</button>
+          <span>${t("category")}</span>
+          <button type="button" id="manageCatsBtn" style="border:none; background:none; text-decoration:underline; cursor:pointer; font-size:0.75rem; color:var(--ink-soft); padding:0;">${t("editCategories")}</button>
         </label>
         <div class="chiprow" id="f-cats">
           ${categories.map(c=>`<div class="chip ${c.id===draft.categoryId?"selected":""}" data-cat="${c.id}"><span class="swatch" style="background:${c.color}"></span>${c.name}</div>`).join("")}
@@ -967,53 +969,53 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       </div>
       <div class="row2">
         <div class="field">
-          <label>Buffer before</label>
+          <label>${t("bufferBefore")}</label>
           <select id="f-bufbefore">
             ${Array.from({length:25},(_,i)=>i*5).map(m => `
               <option value="${m}" ${Number(draft.bufferBefore) === m ? "selected" : ""}>
-                ${m < 60 ? `${m} minutes` : `${Math.floor(m/60)} hour${m >= 120 ? "s" : ""}${m % 60 ? ` ${m % 60} minutes` : ""}`}
+                ${m < 60 ? `${m} ${t("minutes")}` : `${Math.floor(m/60)} ${m >= 120 ? t("hours") : t("hour")}${m % 60 ? ` ${m % 60} ${t("minutes")}` : ""}`}
               </option>
             `).join("")}
           </select>
         </div>
 
         <div class="field">
-          <label>Buffer after</label>
+          <label>${t("bufferAfter")}</label>
           <select id="f-bufafter">
             ${Array.from({length:25},(_,i)=>i*5).map(m => `
               <option value="${m}" ${Number(draft.bufferAfter) === m ? "selected" : ""}>
-                ${m < 60 ? `${m} minutes` : `${Math.floor(m/60)} hour${m >= 120 ? "s" : ""}${m % 60 ? ` ${m % 60} minutes` : ""}`}
+                ${m < 60 ? `${m} ${t("minutes")}` : `${Math.floor(m/60)} ${m >= 120 ? t("hours") : t("hour")}${m % 60 ? ` ${m % 60} ${t("minutes")}` : ""}`}
               </option>
             `).join("")}
           </select>
         </div>
       </div>
       <div class="field">
-        <label>Remind me (before leaving)</label>
+        <label>${t("remindMe")}</label>
         <select id="f-reminder">
-          <option value="none" ${draft.reminder === "none" ? "selected" : ""}>No reminder</option>
-          <option value="30m" ${(!draft.reminder || draft.reminder === "30m") ? "selected" : ""}>30 minutes</option>
-          <option value="1h" ${draft.reminder === "1h" ? "selected" : ""}>1 hour</option>
-          <option value="6h" ${draft.reminder === "6h" ? "selected" : ""}>6 hours</option>
-          <option value="12h" ${draft.reminder === "12h" ? "selected" : ""}>12 hours</option>
-          <option value="1d" ${draft.reminder === "1d" ? "selected" : ""}>1 day</option>
+          <option value="none" ${draft.reminder === "none" ? "selected" : ""}>${t("noReminder")}</option>
+          <option value="30m" ${(!draft.reminder || draft.reminder === "30m") ? "selected" : ""}>30 ${t("minutes")}</option>
+          <option value="1h" ${draft.reminder === "1h" ? "selected" : ""}>1 ${t("hour")}</option>
+          <option value="6h" ${draft.reminder === "6h" ? "selected" : ""}>6 ${t("hours")}</option>
+          <option value="12h" ${draft.reminder === "12h" ? "selected" : ""}>12 ${t("hours")}</option>
+          <option value="1d" ${draft.reminder === "1d" ? "selected" : ""}>1 ${t("hours") === "hours" ? "day" : t("hours")}</option>
           <option value="1w" ${draft.reminder === "1w" ? "selected" : ""}>1 week</option>
           <option value="1mo" ${draft.reminder === "1mo" ? "selected" : ""}>1 month</option>
         </select>
       </div>
-      <div class="field"><label>Repeats</label>
+      <div class="field"><label>${t("repeats")}</label>
         <select id="f-recur">
-          <option value="none" ${draft.recurrence==="none"?"selected":""}>Doesn't repeat</option>
-          <option value="weekly" ${draft.recurrence==="weekly"?"selected":""}>Weekly</option>
-          <option value="fortnightly" ${draft.recurrence==="fortnightly"?"selected":""}>Fortnightly</option>
+          <option value="none" ${draft.recurrence==="none"?"selected":""}>${t("doesntRepeat")}</option>
+          <option value="weekly" ${draft.recurrence==="weekly"?"selected":""}>${t("weekly")}</option>
+          <option value="fortnightly" ${draft.recurrence==="fortnightly"?"selected":""}>${t("fortnightly")}</option>
         </select>
       </div>
-      <div class="togglerow"><span>Mandatory</span><input type="checkbox" id="f-mandatory" ${draft.mandatory?"checked":""} /></div>
-      <div class="togglerow" style="border-bottom:none"><span>Earns money</span><input type="checkbox" id="f-money" ${draft.earnsMoney?"checked":""} /></div>
+      <div class="togglerow"><span>${t("mandatory")}</span><input type="checkbox" id="f-mandatory" ${draft.mandatory?"checked":""} /></div>
+      <div class="togglerow" style="border-bottom:none"><span>${t("earnsMoney")}</span><input type="checkbox" id="f-money" ${draft.earnsMoney?"checked":""} /></div>
       <div class="sheetactions">
-        ${isEdit ? `<button class="btn danger" id="f-delete">Delete</button>` : ""}
-        <button class="btn ghost" id="f-cancel">Cancel</button>
-        <button class="btn primary" id="f-save">${isEdit?"Save":"Add"}</button>
+        ${isEdit ? `<button class="btn danger" id="f-delete">${t("delete")}</button>` : ""}
+        <button class="btn ghost" id="f-cancel">${t("cancel")}</button>
+        <button class="btn primary" id="f-save">${isEdit?t("save"):t("add")}</button>
       </div>
     </div>
   `;

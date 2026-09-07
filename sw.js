@@ -112,6 +112,7 @@ const ASSETS = [
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./i18n.js",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png"
