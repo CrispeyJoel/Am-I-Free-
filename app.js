@@ -440,17 +440,19 @@ function renderDayCol(date) {
   for (const ev of evs) {
     const cat = categoryOf(ev.categoryId);
     const top = (ev.start - DAY_START_MIN)/60*HOUR_PX;
-    // const height = Math.max(ev.duration/60*HOUR_PX, 24);
-    const height = Math.max(ev.duration/60*HOUR_PX, 40);
+    const height = Math.max(ev.duration/60*HOUR_PX, 24);
     const bTop = (ev.start - ev.bufferBefore - DAY_START_MIN)/60*HOUR_PX;
     const bHeightBefore = ev.bufferBefore/60*HOUR_PX;
     const bTopAfter = (ev.start + ev.duration - DAY_START_MIN)/60*HOUR_PX;
     const bHeightAfter = ev.bufferAfter/60*HOUR_PX;
     if (ev.bufferBefore>0) blocks += `<div class="buffer" style="top:${bTop}px;height:${bHeightBefore}px;color:${cat.color}"></div>`;
     if (ev.bufferAfter>0) blocks += `<div class="buffer" style="top:${bTopAfter}px;height:${bHeightAfter}px;color:${cat.color}"></div>`;
-    blocks += `<div class="event ${ev.mandatory?"":"optional"}" style="top:${top}px;height:${height}px;background:${cat.color};border-color:${cat.color}" data-edit="${ev.id}" data-date="${iso(date)}">  
-    <div class="title">${escapeHtml(ev.title)}${ev.earnsMoney?`<span class="dollar">$</span>`:""}</div>
-      <div class="meta">${minToLabel(ev.start)} · ${cat.name}</div>
+    blocks += `<div class="event ${ev.mandatory?"":"optional"}" style="top:${top}px;height:${height}px;background:${cat.color};border-color:${cat.color}" data-edit="${ev.id}" data-date="${iso(date)}">
+      <div class="eventline">
+        <span class="title">${escapeHtml(ev.title)}</span>
+        <span class="meta">${minToLabel(ev.start)} · ${cat.name}</span>
+        ${ev.earnsMoney?`<span class="dollar">$</span>`:""}
+      </div>
     </div>`;
   }
   const nowMin = new Date().getHours()*60+new Date().getMinutes();
