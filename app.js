@@ -218,6 +218,49 @@ function busyIntervals(date) {
     ev
   })).sort((a,b)=>a.start-b.start);
 }
+
+function layoutOverlaps(evs) {
+  // Each event's visual span includes its buffers, since those occupy screen space too.
+  const items = evs.map(ev => ({
+    ev,
+    start: ev.start - ev.bufferBefore,
+    end: ev.start + ev.duration + ev.bufferAfter
+  })).sort((a, b) => a.start - b.start);
+
+  const clusters = [];
+  let current = [];
+  let clusterEnd = -Infinity;
+
+  for (const item of items) {
+    if (current.length && item.start >= clusterEnd) {
+      clusters.push(current);
+      current = [];
+      clusterEnd = -Infinity;
+    }
+    current.push(item);
+    clusterEnd = Math.max(clusterEnd, item.end);
+  }
+  if (current.length) clusters.push(current);
+
+  const layout = new Map();
+
+  for (const cluster of clusters) {
+    const columns = []; // each entry: the `end` time of the last item placed in that column
+    for (const item of cluster) {
+      let colIndex = columns.findIndex(colEnd => item.start >= colEnd);
+      if (colIndex === -1) { colIndex = columns.length; columns.push(item.end); }
+      else { columns[colIndex] = item.end; }
+      layout.set(item.ev.id, { col: colIndex, totalCols: 0 }); // totalCols filled in below
+    }
+    const totalCols = columns.length;
+    for (const item of cluster) {
+      layout.get(item.ev.id).totalCols = totalCols;
+    }
+  }
+
+  return layout;
+}
+
 function mergedIntervals(date) {
   const iv = busyIntervals(date);
   const out = [];
@@ -461,6 +504,7 @@ function renderDayCol(date) {
   for (let m=DAY_START_MIN; m<=DAY_END_MIN; m+=60) {
     hours += `<div class="hourrow"><span class="label">${minToLabel(m)}</span></div>`;
   }
+  const overlapLayout = layoutOverlaps(timedEvs);
   let blocks = "";
   for (const ev of timedEvs) {
     const cat = categoryOf(ev.categoryId);
@@ -471,8 +515,15 @@ function renderDayCol(date) {
     const bHeightBefore = ev.bufferBefore/60*HOUR_PX;
     const bTopAfter = (ev.start + ev.duration - DAY_START_MIN)/60*HOUR_PX;
     const bHeightAfter = ev.bufferAfter/60*HOUR_PX;
-    if (ev.bufferBefore>0) blocks += `<div class="buffer" style="top:${bTop}px;height:${bHeightBefore}px;color:${cat.color}"></div>`;
-    if (ev.bufferAfter>0) blocks += `<div class="buffer" style="top:${bTopAfter}px;height:${bHeightAfter}px;color:${cat.color}"></div>`;
+
+    const layout = overlapLayout.get(ev.id) || { col: 0, totalCols: 1 };
+    const colWidthPct = 100 / layout.totalCols;
+    const leftPct = layout.col * colWidthPct;
+    const gapPx = layout.totalCols > 1 ? 3 : 0;
+    const positionStyle = `left: calc(${leftPct}% + ${gapPx}px); width: calc(${colWidthPct}% - ${gapPx * 2}px);`;
+
+    if (ev.bufferBefore>0) blocks += `<div class="buffer" style="top:${bTop}px;height:${bHeightBefore}px;color:${cat.color};${positionStyle}"></div>`;
+    if (ev.bufferAfter>0) blocks += `<div class="buffer" style="top:${bTopAfter}px;height:${bHeightAfter}px;color:${cat.color};${positionStyle}"></div>`;
     const isCompact = ev.duration <= 45;
     const eventInner = isCompact
       ? `<div class="eventline">
@@ -483,7 +534,7 @@ function renderDayCol(date) {
       : `<div class="title">${escapeHtml(ev.title)}${ev.earnsMoney?`<span class="dollar">$</span>`:""}</div>
          <div class="meta">${minToLabel(ev.start)} · ${cat.name}</div>`;
 
-        blocks += `<div class="event ${isCompact?"compact":""} ${isLove?"love-cat":""} ${ev.mandatory?"":"optional"}" style="top:${top}px;height:${height}px;background:${cat.color};border-color:${cat.color}" data-edit="${ev.id}" data-date="${iso(date)}">
+        blocks += `<div class="event ${isCompact?"compact":""} ${isLove?"love-cat":""} ${ev.mandatory?"":"optional"}" style="top:${top}px;height:${height}px;background:${cat.color};border-color:${cat.color};${positionStyle}" data-edit="${ev.id}" data-date="${iso(date)}">
       ${eventInner}
     </div>`;
   }

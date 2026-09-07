@@ -339,8 +339,8 @@ button {
 .buffer {
   position: absolute;
 
-  left: 0px;
-  right: 4px;
+  /* left: 0px;
+  right: 4px; */
 
   background-image: repeating-linear-gradient(
     135deg,
@@ -356,8 +356,8 @@ button {
 .event {
   position: absolute;
 
-  left: 0px;
-  right: 4px;
+  /* left: 0px;
+  right: 4px; */
 
   border-radius: 8px;
 
