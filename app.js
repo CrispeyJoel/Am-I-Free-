@@ -585,11 +585,19 @@ function attachTimelineDragHandlers(daycolEl, date) {
   let labelEl = null;
   let longPressTimer = null;
   let dragStarted = false;
+  let pendingStart = null;
+  let lastTouchPos = null;
+
+  const MOVE_CANCEL_THRESHOLD = 10; // px of movement during the hold that cancels drag-start
+
+  function getPoint(evt) {
+    return evt.touches ? evt.touches[0] : evt;
+  }
 
   function getOffsetY(evt) {
     const rect = timeline.getBoundingClientRect();
-    const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
-    return clientY - rect.top;
+    const point = getPoint(evt);
+    return point.clientY - rect.top;
   }
 
   function startDrag(evt) {
@@ -622,11 +630,15 @@ function attachTimelineDragHandlers(daycolEl, date) {
   }
 
   function moveDrag(evt) {
+    const point = getPoint(evt);
+    lastTouchPos = { x: point.clientX, y: point.clientY };
+
     if (!dragStarted || !dragState) return;
+
     evt.preventDefault();
     const y = getOffsetY(evt);
     const minutes = snapToHalfHour(y);
-    dragState.currentMin = Math.max(dragState.startMin + 15, Math.min(DAY_END_MIN + 60, minutes));
+    dragState.currentMin = Math.max(dragState.startMin + 30, Math.min(DAY_END_MIN + 60, minutes));
     updateGhost();
   }
 
@@ -661,8 +673,19 @@ function attachTimelineDragHandlers(daycolEl, date) {
 
   function onPointerDown(evt) {
     if (evt.target.closest(".event") || evt.target.closest(".buffer")) return;
-    longPressTimer = setTimeout(() => startDrag(evt), 350);
+
+    const point = getPoint(evt);
+    pendingStart = { x: point.clientX, y: point.clientY };
+    lastTouchPos = pendingStart;
+
+    longPressTimer = setTimeout(() => {
+      const dx = Math.abs(lastTouchPos.x - pendingStart.x);
+      const dy = Math.abs(lastTouchPos.y - pendingStart.y);
+      if (dx > MOVE_CANCEL_THRESHOLD || dy > MOVE_CANCEL_THRESHOLD) return; // finger moved — treat as a scroll, not a hold
+      startDrag(evt);
+    }, 350);
   }
+
   function onPointerCancel() {
     clearTimeout(longPressTimer);
     if (dragStarted) endDrag();
