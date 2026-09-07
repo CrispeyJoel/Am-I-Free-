@@ -444,7 +444,7 @@ button {
 }
 
 .event.love-cat {
-  background: linear-gradient(135deg, #ff8fc7, #ff4fa3) !important;
+  background: linear-gradient(135deg, #f36174, #e63b60) !important;
   position: relative;
   overflow: visible;
 }
