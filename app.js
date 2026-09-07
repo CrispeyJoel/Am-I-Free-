@@ -741,12 +741,16 @@ function importBackup(file) {
 }
 
 let settingsPanelEl = null;
+let settingsAuthView = "main"; // "main" | "auth"
 
 function settingsPanelContent() {
+  if (settingsAuthView === "auth") return authViewContent();
+
   return `
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
       <h2 style="margin:0;">${t("settings")}</h2>
-      <button id="settingsClose" style="border:none; background:none; font-size:1.3rem; line-height:1; color:var(--ink-soft); padding:4px;">×</button>    </div>
+      <button id="settingsClose" style="border:none; background:none; font-size:1.3rem; line-height:1; color:var(--ink-soft); padding:4px;">×</button>
+    </div>
 
     <div class="settings-section">
       <h3>${t("cloudAccount")}</h3>
@@ -789,14 +793,48 @@ function settingsPanelContent() {
   `;
 }
 
+function authViewContent() {
+  return `
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:18px;">
+      <button id="authBack" style="border:none; background:none; font-size:1.3rem; line-height:1; color:var(--ink-soft); padding:4px;">‹</button>
+      <h2 style="margin:0;">${t("cloudAccount")}</h2>
+    </div>
+
+    <div class="field">
+      <label>Email</label>
+      <input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com" />
+    </div>
+
+    <div class="field">
+      <label>Password</label>
+      <input id="authPassword" type="password" autocomplete="current-password" placeholder="Password" />
+    </div>
+
+    <div id="authMessage" style="display:none; margin:10px 0; padding:10px; border-radius:8px; font-size:13px;"></div>
+
+    <button class="btn primary" id="authLogin" style="width:100%;">${t("signIn")}</button>
+
+    <div style="display:flex; justify-content:space-between; margin-top:14px; font-size:13px;">
+      <button id="authCreate" style="border:none; background:none; text-decoration:underline; cursor:pointer; padding:0; color:var(--ink);">Create an account</button>
+      <button id="authForgot" style="border:none; background:none; text-decoration:underline; cursor:pointer; padding:0; color:var(--ink);">Forgot password?</button>
+    </div>
+  `;
+}
+
 function wireSettingsPanel(panel) {
+  if (settingsAuthView === "auth") {
+    wireAuthView(panel);
+    return;
+  }
+
   panel.querySelector("#settingsClose").addEventListener("click", () => {
     if (settingsPanelEl) { settingsPanelEl.remove(); settingsPanelEl = null; }
   });
 
   panel.querySelector("#settingsAuthBtn").addEventListener("click", () => {
     if (!currentUser) {
-      signInCloud();
+      settingsAuthView = "auth";
+      refreshSettingsPanel();
     } else if (confirm(`Synced as ${currentUser.displayName || currentUser.email}. Sign out of cloud backup?`)) {
       signOutCloud();
     }
@@ -816,18 +854,89 @@ function wireSettingsPanel(panel) {
   });
 }
 
-function openSettingsPanel() {
-  if (settingsPanelEl) return;
+function wireAuthView(panel) {
+  const emailInput = panel.querySelector("#authEmail");
+  const passwordInput = panel.querySelector("#authPassword");
+  const messageBox = panel.querySelector("#authMessage");
 
-  const overlay = document.createElement("div");
-  overlay.className = "side-panel-overlay";
-  overlay.id = "settingsOverlay";
-  overlay.innerHTML = `<div class="side-panel" id="settingsPanel">${settingsPanelContent()}</div>`;
-  document.body.appendChild(overlay);
-  settingsPanelEl = overlay;
+  const showMessage = (text, isError = true) => {
+    messageBox.textContent = text;
+    messageBox.style.background = isError ? "#fff0ef" : "#eefaf0";
+    messageBox.style.color = isError ? "#b42318" : "#1a7f3c";
+    messageBox.style.display = "block";
+  };
+  const hideMessage = () => { messageBox.style.display = "none"; };
 
-  overlay.addEventListener("click", e => { if (e.target === overlay) { overlay.remove(); settingsPanelEl = null; } });
-  wireSettingsPanel(overlay.querySelector("#settingsPanel"));
+  panel.querySelector("#authBack").addEventListener("click", () => {
+    settingsAuthView = "main";
+    refreshSettingsPanel();
+  });
+
+  panel.querySelector("#authLogin").addEventListener("click", async () => {
+    hideMessage();
+    const email = emailInput.value.trim().toLowerCase();
+    const password = passwordInput.value;
+
+    if (!email) return showMessage("Enter your email address.");
+    if (!password) return showMessage("Enter your password.");
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      settingsAuthView = "main";
+      refreshSettingsPanel();
+    } catch (error) {
+      console.error("Email sign-in failed:", error);
+      const messages = {
+        "auth/invalid-credential": "The email or password is incorrect.",
+        "auth/user-not-found": "No account exists with this email — try Create an account instead.",
+        "auth/wrong-password": "The password is incorrect.",
+        "auth/invalid-email": "Enter a valid email address.",
+        "auth/too-many-requests": "Too many attempts. Try again later."
+      };
+      showMessage(messages[error.code] || error.message || "Sign-in failed.");
+    }
+  });
+
+  panel.querySelector("#authCreate").addEventListener("click", async () => {
+    hideMessage();
+    const email = emailInput.value.trim().toLowerCase();
+    const password = passwordInput.value;
+
+    if (!email) return showMessage("Enter your email address.");
+    if (password.length < 6) return showMessage("Password must contain at least 6 characters.");
+
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      settingsAuthView = "main";
+      refreshSettingsPanel();
+    } catch (error) {
+      console.error("Account creation failed:", error);
+      const messages = {
+        "auth/email-already-in-use": "An account already exists with this email — try Sign in, or use Forgot password.",
+        "auth/invalid-email": "Enter a valid email address.",
+        "auth/weak-password": "Password must contain at least 6 characters."
+      };
+      showMessage(messages[error.code] || error.message || "Could not create account.");
+    }
+  });
+
+  panel.querySelector("#authForgot").addEventListener("click", async () => {
+    hideMessage();
+    const email = emailInput.value.trim().toLowerCase();
+    if (!email) return showMessage("Enter your email address first, then tap Forgot password.");
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      showMessage("Password reset email sent — check your inbox, then come back and sign in.", false);
+    } catch (error) {
+      console.error("Password reset failed:", error);
+      const messages = {
+        "auth/user-not-found": "No account exists with this email — try Create an account instead.",
+        "auth/invalid-email": "Enter a valid email address."
+      };
+      showMessage(messages[error.code] || error.message || "Couldn't send reset email.");
+    }
+  });
 }
 
 function refreshSettingsPanel() {
@@ -1492,7 +1601,7 @@ async function loadPushState(user) {
 
 async function handleAuthChange(user) {
   currentUser = user;
-
+  settingsAuthView = "main";
   if (unsubscribeCloudData) {
     unsubscribeCloudData();
     unsubscribeCloudData = null;
