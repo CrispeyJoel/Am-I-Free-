@@ -278,22 +278,19 @@ function parseQuickAdd(text) {
   }
   const cat = categoryOf(categoryId);
 
-  const isAllDay = !!data.allDay;
-
   return {
     id: uid(), seriesId: uid(),
-    title: cleanAITitle(data.title, text),
-    categoryId: cat.id,
-    dateISO: data.date || iso(selectedDate),
+    title, categoryId,
+    dateISO: iso(date),
     allDay: isAllDay,
-    start: isAllDay ? 0 : (isNaN(hh) ? 12 : hh) * 60 + (isNaN(mm) ? 0 : mm),
-    duration: isAllDay ? 0 : (Number.isFinite(data.duration) ? data.duration : 60),
-    bufferBefore: isAllDay ? 0 : (Number.isFinite(data.bufferBefore) ? data.bufferBefore : 30),
-    bufferAfter: isAllDay ? 0 : (Number.isFinite(data.bufferAfter) ? data.bufferAfter : 30),
-    reminder: data.reminder || (isAllDay ? "1d" : "30m"),
-    mandatory: data.mandatory !== false,
-    earnsMoney: !!data.earnsMoney,
-    recurrence: data.recurrence || "none"
+    start: isAllDay ? 0 : (time===null ? roundToNext30() : time),
+    duration: isAllDay ? 0 : 60,
+    bufferBefore: 0,
+    bufferAfter: 0,
+    reminder: isAllDay ? "1d" : "30m",
+    mandatory: true,
+    earnsMoney: !!cat.earnsDefault,
+    recurrence: "none"
   };
 }
 function roundToNext30() {
