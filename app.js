@@ -50,6 +50,7 @@ let pushEnabled = false;
 let unsubscribeCloudData = null;
 let unsubscribeUserDoc = null;
 let lastSyncedAt = null;
+let syncFailed = false;
 
 setPersistence(auth, browserLocalPersistence).catch(error => {
   console.error("Firebase persistence failed:", error);
@@ -94,12 +95,16 @@ async function save() {
         { merge: true }
       );
       lastSyncedAt = Date.now();
+      syncFailed = false;
       const row = document.getElementById("cloudstatus");
       if (row) row.textContent = `Synced as ${currentUser.displayName || currentUser.email} · last saved ${formatSyncTime(lastSyncedAt)}`;
+      refreshSyncTag();
     } catch (error) {
       console.error("Cloud save failed:", error);
+      syncFailed = true;
       const row = document.getElementById("cloudstatus");
       if (row) row.textContent = "Cloud save FAILED - check your connection";
+      refreshSyncTag();
     }
   }
 
@@ -134,6 +139,13 @@ function minToLabel(min) {
 function formatSyncTime(ts) {
   if (!ts) return "";
   return new Date(ts).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+function refreshSyncTag() {
+  const tag = document.getElementById("synctag");
+  if (tag) {
+    tag.textContent = renderSyncTag();
+    tag.classList.toggle("fail", syncFailed);
+  }
 }
 function categoryOf(id) { return categories.find(c=>c.id===id) || categories[0]; }
 function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -365,15 +377,7 @@ function renderTopbar() {
 
     <div class="topbar-actions">
       <button class="todaybtn" data-act="today" title="Back to today">Today</button>
-      
-      <button class="pushbtn-slim ${pushEnabled ? "active" : ""}" data-act="toggle-push" title="Toggle push notifications">
-        <span class="dot"></span>
-        <span>${pushEnabled ? "Push On" : "Push Off"}</span>
-      </button>
-
-      <button class="signinbtn" data-act="cloud" title="Cloud sync">
-        ${currentUser ? "Signed in" : "Sign in"}
-      </button>
+      <button class="iconbtn" data-act="settings" title="Settings">⚙</button>
     </div>
 
     <div class="topbar-view">
@@ -383,15 +387,14 @@ function renderTopbar() {
       </div>
     </div>
 
-    <div id="cloudstatus" class="cloudstatus">
-      ${currentUser ? `Synced as ${currentUser.displayName || currentUser.email}${lastSyncedAt ? ` · last saved ${formatSyncTime(lastSyncedAt)}` : ""}` : "Sign in to back up your calendar + enable notifications"}
-    </div>
-    <div style="display:flex; justify-content:center; gap:16px; padding:0 16px 10px; font-size:0.7rem;">
-      <button id="exportBtn" style="border:none;background:none;text-decoration:underline;color:var(--ink-soft);cursor:pointer;padding:0;">Export backup</button>
-      <button id="importBtn" style="border:none;background:none;text-decoration:underline;color:var(--ink-soft);cursor:pointer;padding:0;">Import backup</button>
-      <input type="file" id="importFile" accept="application/json" style="display:none;" />
-    </div>
+    <div class="synctag ${syncFailed ? "fail" : ""}" id="synctag">${renderSyncTag()}</div>
   `;
+}
+
+function renderSyncTag() {
+  if (!currentUser) return "Not signed in";
+  if (syncFailed) return "Cloud save failed";
+  return lastSyncedAt ? `Synced ✓ ${formatSyncTime(lastSyncedAt)}` : "Signed in";
 }
 
 function renderFreeBanner() {
@@ -628,11 +631,7 @@ function attachHandlers() {
       if (act === "today") { weekStart = startOfWeek(new Date()); selectedDate = startOfDay(new Date()); monthCursor = startOfMonth(new Date()); render(); }
       if (act === "prev") { view === "month" ? shiftMonth(-1) : shiftWeek(-1); }
       if (act === "next") { view === "month" ? shiftMonth(1) : shiftWeek(1); }
-      if (act === "toggle-push") { toggleNotifications(); }
-      if (act === "cloud") {
-        if (!currentUser) signInCloud();
-        else if (confirm(`Synced as ${currentUser.displayName||currentUser.email}. Sign out of cloud backup?`)) signOutCloud();
-      }
+      if (act === "settings") { openSettingsPanel(); }
     });
   });
   app.querySelectorAll("[data-view]").forEach(btn=>{
@@ -741,6 +740,95 @@ function importBackup(file) {
   };
   reader.readAsText(file);
 }
+
+let settingsPanelEl = null;
+
+function settingsPanelContent() {
+  return `
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
+      <h2 style="margin:0;">Settings</h2>
+      <button id="settingsClose" style="border:none; background:none; font-size:1.3rem; line-height:1; color:var(--ink-soft); padding:4px;">×</button>
+    </div>
+
+    <div class="settings-section">
+      <h3>Cloud account</h3>
+      <div id="cloudstatus" class="cloudstatus" style="text-align:left; padding:0 0 10px;">
+        ${currentUser ? `Synced as ${currentUser.displayName || currentUser.email}${lastSyncedAt ? ` · last saved ${formatSyncTime(lastSyncedAt)}` : ""}` : "Sign in to back up your calendar + enable notifications"}
+      </div>
+      <button class="settings-btn" id="settingsAuthBtn">
+        <span>${currentUser ? "Sign out" : "Sign in"}</span>
+        <span>›</span>
+      </button>
+    </div>
+
+    <div class="settings-section">
+      <h3>Notifications</h3>
+      <button class="settings-btn ${pushEnabled ? "active" : ""}" id="settingsPushBtn">
+        <span>${pushEnabled ? "Push notifications: On" : "Push notifications: Off"}</span>
+        <span>${pushEnabled ? "✓" : ""}</span>
+      </button>
+    </div>
+
+    <div class="settings-section">
+      <h3>Backup</h3>
+      <button class="settings-btn" id="settingsExportBtn">
+        <span>Export backup</span><span>↓</span>
+      </button>
+      <button class="settings-btn" id="settingsImportBtn">
+        <span>Import backup</span><span>↑</span>
+      </button>
+      <input type="file" id="settingsImportFile" accept="application/json" style="display:none;" />
+    </div>
+  `;
+}
+
+function wireSettingsPanel(panel) {
+  panel.querySelector("#settingsClose").addEventListener("click", () => {
+    if (settingsPanelEl) { settingsPanelEl.remove(); settingsPanelEl = null; }
+  });
+
+  panel.querySelector("#settingsAuthBtn").addEventListener("click", () => {
+    if (!currentUser) {
+      signInCloud();
+    } else if (confirm(`Synced as ${currentUser.displayName || currentUser.email}. Sign out of cloud backup?`)) {
+      signOutCloud();
+    }
+  });
+
+  panel.querySelector("#settingsPushBtn").addEventListener("click", () => toggleNotifications());
+
+  panel.querySelector("#settingsExportBtn").addEventListener("click", exportBackup);
+
+  const importFile = panel.querySelector("#settingsImportFile");
+  panel.querySelector("#settingsImportBtn").addEventListener("click", () => importFile.click());
+  importFile.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files[0]) importBackup(e.target.files[0]);
+    e.target.value = "";
+  });
+}
+
+function openSettingsPanel() {
+  if (settingsPanelEl) return;
+
+  const overlay = document.createElement("div");
+  overlay.className = "side-panel-overlay";
+  overlay.id = "settingsOverlay";
+  overlay.innerHTML = `<div class="side-panel" id="settingsPanel">${settingsPanelContent()}</div>`;
+  document.body.appendChild(overlay);
+  settingsPanelEl = overlay;
+
+  overlay.addEventListener("click", e => { if (e.target === overlay) { overlay.remove(); settingsPanelEl = null; } });
+  wireSettingsPanel(overlay.querySelector("#settingsPanel"));
+}
+
+function refreshSettingsPanel() {
+  if (!settingsPanelEl) return;
+  const panel = settingsPanelEl.querySelector("#settingsPanel");
+  if (!panel) return;
+  panel.innerHTML = settingsPanelContent();
+  wireSettingsPanel(panel);
+}
+
 
 function openCategoryManager(onDone) {
   const overlay = document.createElement("div");
@@ -1190,6 +1278,7 @@ async function toggleNotifications() {
 
       pushEnabled = false;
       render();
+      refreshSettingsPanel();
     } catch (error) {
       console.error("Failed to disable notifications:", error);
       alert("Couldn't disable notifications: " + error.message);
@@ -1232,6 +1321,7 @@ async function enableNotifications() {
     if (permission !== "granted") {
       pushEnabled = false;
       render();
+      refreshSettingsPanel();
       return;
     }
 
@@ -1260,6 +1350,7 @@ async function enableNotifications() {
 
     pushEnabled = true;
     render();
+    refreshSettingsPanel();
   } catch (error) {
     console.error("Push setup failed:", error);
     alert("Push setup failed: " + error.message);
@@ -1329,7 +1420,9 @@ async function syncCloudData(user) {
           suppressNextCloudPush = true;
           await setDoc(dataRef, { list: events, categories, updatedAt: Date.now() }, { merge: true });
           lastSyncedAt = Date.now();
+          syncFailed = false;
           if (row) row.textContent = `Synced as ${user.email || "your account"} · last saved ${formatSyncTime(lastSyncedAt)}`;
+          refreshSyncTag();
           return;
         }
 
@@ -1340,15 +1433,21 @@ async function syncCloudData(user) {
         localStorage.setItem("af_events", JSON.stringify(events));
         localStorage.setItem("af_categories", JSON.stringify(categories));
         lastSyncedAt = Date.now();
+        syncFailed = false;
         if (row) row.textContent = `Synced as ${user.email || "your account"} · last saved ${formatSyncTime(lastSyncedAt)}`;
+        refreshSyncTag();
         render();
       } catch (error) {
         console.error("Cloud calendar sync failed:", error);
+        syncFailed = true;
         if (row) row.textContent = "Cloud calendar sync failed";
+        refreshSyncTag();
       }
     }, error => {
       console.error("Cloud calendar listener failed:", error);
+      syncFailed = true;
       if (row) row.textContent = "Cloud calendar unavailable";
+      refreshSyncTag();
     });
   } catch (error) {
     console.error("Cloud sync setup failed:", error);
@@ -1371,10 +1470,12 @@ async function loadPushState(user) {
     unsubscribeUserDoc = onSnapshot(userRef, snap => {
       pushEnabled = !!(snap.exists() && snap.data().pushToken);
       render();
+      refreshSettingsPanel();
     }, error => {
       console.error("Push state listener failed:", error);
       pushEnabled = Notification.permission === "granted";
       render();
+      refreshSettingsPanel();
     });
   } catch (error) {
     console.error("Push state check failed:", error);
@@ -1415,6 +1516,7 @@ async function handleAuthChange(user) {
   }
 
   render();
+  refreshSettingsPanel();
 }
 
 onAuthStateChanged(auth, handleAuthChange);
