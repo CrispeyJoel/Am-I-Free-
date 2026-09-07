@@ -49,6 +49,7 @@ let suppressNextCloudPush = false;
 let pushEnabled = false;
 let unsubscribeCloudData = null;
 let unsubscribeUserDoc = null;
+let lastSyncedAt = null;
 
 setPersistence(auth, browserLocalPersistence).catch(error => {
   console.error("Firebase persistence failed:", error);
@@ -92,10 +93,13 @@ async function save() {
         { list: events, categories, updatedAt: Date.now() },
         { merge: true }
       );
+      lastSyncedAt = Date.now();
+      const row = document.getElementById("cloudstatus");
+      if (row) row.textContent = `Synced as ${currentUser.displayName || currentUser.email} · last saved ${formatSyncTime(lastSyncedAt)}`;
     } catch (error) {
       console.error("Cloud save failed:", error);
       const row = document.getElementById("cloudstatus");
-      if (row) row.textContent = "Cloud save failed. Check your connection.";
+      if (row) row.textContent = "Cloud save FAILED - check your connection";
     }
   }
 
@@ -125,6 +129,11 @@ function minToLabel(min) {
   const ampm = h>=12 ? "pm":"am";
   let h12 = h%12; if (h12===0) h12=12;
   return m===0 ? `${h12}${ampm}` : `${h12}:${pad2(m)}${ampm}`;
+}
+
+function formatSyncTime(ts) {
+  if (!ts) return "";
+  return new Date(ts).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 function categoryOf(id) { return categories.find(c=>c.id===id) || categories[0]; }
 function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -375,7 +384,12 @@ function renderTopbar() {
     </div>
 
     <div id="cloudstatus" class="cloudstatus">
-      ${currentUser ? `Synced as ${currentUser.displayName || currentUser.email}` : "Sign in to back up your calendar + enable notifications"}
+      ${currentUser ? `Synced as ${currentUser.displayName || currentUser.email}${lastSyncedAt ? ` · last saved ${formatSyncTime(lastSyncedAt)}` : ""}` : "Sign in to back up your calendar + enable notifications"}
+    </div>
+    <div style="display:flex; justify-content:center; gap:16px; padding:0 16px 10px; font-size:0.7rem;">
+      <button id="exportBtn" style="border:none;background:none;text-decoration:underline;color:var(--ink-soft);cursor:pointer;padding:0;">Export backup</button>
+      <button id="importBtn" style="border:none;background:none;text-decoration:underline;color:var(--ink-soft);cursor:pointer;padding:0;">Import backup</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none;" />
     </div>
   `;
 }
@@ -647,6 +661,16 @@ function attachHandlers() {
   const qa = document.getElementById("quickadd");
   const qi = document.getElementById("quickinput");
   const voice = document.getElementById("voicebtn");
+  const exportBtn = document.getElementById("exportBtn");
+  const importBtn = document.getElementById("importBtn");
+  const importFile = document.getElementById("importFile");
+
+  if (exportBtn) exportBtn.addEventListener("click", exportBackup);
+  if (importBtn) importBtn.addEventListener("click", () => importFile && importFile.click());
+  if (importFile) importFile.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files[0]) importBackup(e.target.files[0]);
+    e.target.value = "";
+  });
 
   if (qa) {
     qa.addEventListener("click", () => submitQuickAdd());
@@ -683,6 +707,40 @@ async function submitQuickAdd() {
 
 function shiftWeek(n) { weekStart = addDays(weekStart, 7*n); selectedDate = addDays(selectedDate,7*n); render(); }
 function shiftMonth(n) { monthCursor = new Date(monthCursor.getFullYear(), monthCursor.getMonth()+n, 1); render(); }
+
+function exportBackup() {
+  const payload = { exportedAt: new Date().toISOString(), events, categories };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `actually-free-backup-${iso(new Date())}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importBackup(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!Array.isArray(data.events)) throw new Error("File doesn't look like a valid backup.");
+      const count = data.events.length;
+      const when = data.exportedAt ? new Date(data.exportedAt).toLocaleString() : "an unknown date";
+      if (!confirm(`This backup has ${count} event(s), exported ${when}. Replace your current calendar with it?`)) return;
+      events = data.events;
+      if (Array.isArray(data.categories)) categories = data.categories;
+      save();
+      render();
+      alert("Backup restored.");
+    } catch (e) {
+      alert("Couldn't read that file: " + e.message);
+    }
+  };
+  reader.readAsText(file);
+}
 
 function openCategoryManager(onDone) {
   const overlay = document.createElement("div");
@@ -1270,7 +1328,8 @@ async function syncCloudData(user) {
         if (remoteEvents.length === 0 && Array.isArray(events) && events.length > 0) {
           suppressNextCloudPush = true;
           await setDoc(dataRef, { list: events, categories, updatedAt: Date.now() }, { merge: true });
-          if (row) row.textContent = `Synced as ${user.email || "your account"}`;
+          lastSyncedAt = Date.now();
+          if (row) row.textContent = `Synced as ${user.email || "your account"} · last saved ${formatSyncTime(lastSyncedAt)}`;
           return;
         }
 
@@ -1280,8 +1339,8 @@ async function syncCloudData(user) {
 
         localStorage.setItem("af_events", JSON.stringify(events));
         localStorage.setItem("af_categories", JSON.stringify(categories));
-
-        if (row) row.textContent = `Synced as ${user.email || "your account"}`;
+        lastSyncedAt = Date.now();
+        if (row) row.textContent = `Synced as ${user.email || "your account"} · last saved ${formatSyncTime(lastSyncedAt)}`;
         render();
       } catch (error) {
         console.error("Cloud calendar sync failed:", error);
