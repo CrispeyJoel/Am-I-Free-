@@ -377,14 +377,11 @@ function renderTopbar() {
 
     <div class="topbar-actions">
       <button class="todaybtn" data-act="today" title="Back to today">Today</button>
-      <button class="iconbtn" data-act="settings" title="Settings">⚙</button>
-    </div>
-
-    <div class="topbar-view">
       <div class="viewtoggle">
         <button data-view="day" class="${view === "day" ? "active" : ""}">Week</button>
         <button data-view="month" class="${view === "month" ? "active" : ""}">Month</button>
       </div>
+      <button class="iconbtn" data-act="settings" title="Settings">Settings</button>
     </div>
 
     <div class="synctag ${syncFailed ? "fail" : ""}" id="synctag">${renderSyncTag()}</div>
@@ -747,13 +744,12 @@ function settingsPanelContent() {
   return `
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
       <h2 style="margin:0;">Settings</h2>
-      <button id="settingsClose" style="border:none; background:none; font-size:1.3rem; line-height:1; color:var(--ink-soft); padding:4px;">×</button>
-    </div>
+      <button id="settingsClose" style="border:none; background:none; font-size:1.3rem; line-height:1; color:var(--ink-soft); padding:4px;">×</button>    </div>
 
     <div class="settings-section">
       <h3>Cloud account</h3>
       <div id="cloudstatus" class="cloudstatus" style="text-align:left; padding:0 0 10px;">
-        ${currentUser ? `Synced as ${currentUser.displayName || currentUser.email}${lastSyncedAt ? ` · last saved ${formatSyncTime(lastSyncedAt)}` : ""}` : "Sign in to back up your calendar + enable notifications"}
+        ${currentUser ? `Synced as ${currentUser.displayName || currentUser.email}${lastSyncedAt ? ` · last saved ${formatSyncTime(lastSyncedAt)}` : ""}` : "Sign in to back up your calendar and enable notifications"}
       </div>
       <button class="settings-btn" id="settingsAuthBtn">
         <span>${currentUser ? "Sign out" : "Sign in"}</span>
@@ -772,10 +768,10 @@ function settingsPanelContent() {
     <div class="settings-section">
       <h3>Backup</h3>
       <button class="settings-btn" id="settingsExportBtn">
-        <span>Export backup</span><span>↓</span>
+        <span>Export backup</span>
       </button>
       <button class="settings-btn" id="settingsImportBtn">
-        <span>Import backup</span><span>↑</span>
+        <span>Import backup</span>
       </button>
       <input type="file" id="settingsImportFile" accept="application/json" style="display:none;" />
     </div>

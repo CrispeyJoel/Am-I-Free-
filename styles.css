@@ -1059,7 +1059,7 @@ button {
   width: 82%;
   max-width: 340px;
   height: 100%;
-  padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+  padding: calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));
   overflow-y: auto;
   box-shadow: -4px 0 20px rgba(0,0,0,0.15);
 }
