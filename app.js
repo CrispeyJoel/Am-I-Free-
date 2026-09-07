@@ -406,8 +406,8 @@ function renderDayCol(date) {
     const bHeightAfter = ev.bufferAfter/60*HOUR_PX;
     if (ev.bufferBefore>0) blocks += `<div class="buffer" style="top:${bTop}px;height:${bHeightBefore}px;color:${cat.color}"></div>`;
     if (ev.bufferAfter>0) blocks += `<div class="buffer" style="top:${bTopAfter}px;height:${bHeightAfter}px;color:${cat.color}"></div>`;
-    blocks += `<div class="event ${ev.mandatory?"":"optional"}" style="top:${top}px;height:${height}px;background:${cat.color};border-color:${cat.color}" data-edit="${ev.id}">
-      <div class="title">${escapeHtml(ev.title)}${ev.earnsMoney?`<span class="dollar">$</span>`:""}</div>
+    blocks += `<div class="event ${ev.mandatory?"":"optional"}" style="top:${top}px;height:${height}px;background:${cat.color};border-color:${cat.color}" data-edit="${ev.id}" data-date="${iso(date)}">  
+    <div class="title">${escapeHtml(ev.title)}${ev.earnsMoney?`<span class="dollar">$</span>`:""}</div>
       <div class="meta">${minToLabel(ev.start)} · ${cat.name}</div>
     </div>`;
   }
@@ -623,7 +623,7 @@ function attachHandlers() {
     });
   });
   app.querySelectorAll("[data-edit]").forEach(el=>{
-    el.addEventListener("click", ()=> openSheet(events.find(e=>e.id===el.dataset.edit)));
+    el.addEventListener("click", ()=> openSheet(events.find(e=>e.id===el.dataset.edit), false, el.dataset.date));
   });
   const scroller = document.getElementById("scroller");
   if (scroller) scroller.addEventListener("scroll", onScrollerScroll);
@@ -731,8 +731,50 @@ function openCategoryManager(onDone) {
   });
 }
 
+function openDeleteChoice(draft, parentOverlay, targetDateISO) {
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h2>Delete this repeating event</h2>
+      <p style="font-size:0.88rem; color:var(--ink-soft); margin:0 0 16px;">
+        This event repeats. What would you like to do?
+      </p>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <button class="btn ghost" id="delCancel">Cancel — don't delete anything</button>
+        <button class="btn ghost" id="delOne">Delete just this date (${targetDateISO})</button>
+        <button class="btn" id="delAll" style="background:var(--danger); color:white;">Delete this and all future dates</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+
+  overlay.querySelector("#delCancel").addEventListener("click", () => overlay.remove());
+
+  overlay.querySelector("#delOne").addEventListener("click", () => {
+    const ev = events.find(e => e.id === draft.id);
+    if (ev) {
+      ev.excludedDates = Array.isArray(ev.excludedDates) ? ev.excludedDates : [];
+      ev.excludedDates.push(targetDateISO);
+    }
+    save();
+    overlay.remove();
+    parentOverlay.remove();
+    render();
+  });
+
+  overlay.querySelector("#delAll").addEventListener("click", () => {
+    events = events.filter(e => e.id !== draft.id);
+    save();
+    overlay.remove();
+    parentOverlay.remove();
+    render();
+  });
+}
+
 /* ---------- Add/edit sheet ---------- */
-function openSheet(ev, isNew=false) {
+function openSheet(ev, isNew=false, occurrenceDateISO=null) {
   const isEdit = !isNew && ev && events.includes(ev);
   const draft = isEdit ? ev : (ev || {
     id: uid(), seriesId: uid(), title:"", categoryId: categories[0].id,
@@ -848,17 +890,12 @@ function openSheet(ev, isNew=false) {
 
   if (isEdit) {
     overlay.querySelector("#f-delete").addEventListener("click", ()=>{
-      if (draft.recurrence !== "none") {
-        const seriesWide = confirm("Delete the whole repeating series? Cancel to delete just this date's instance.");
-        if (seriesWide) {
-          events = events.filter(e=>e.id!==draft.id);
-        } else {
-          draft.dateISO = iso(addDays(new Date(draft.dateISO), draft.recurrence==="weekly"?7:14));
-        }
+      if (getRecurrenceDays(draft) > 0) {
+        openDeleteChoice(draft, overlay, occurrenceDateISO || draft.dateISO);
       } else {
         events = events.filter(e=>e.id!==draft.id);
+        save(); overlay.remove(); render();
       }
-      save(); overlay.remove(); render();
     });
   }
 
