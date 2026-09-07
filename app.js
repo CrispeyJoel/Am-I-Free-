@@ -939,6 +939,20 @@ function wireAuthView(panel) {
   });
 }
 
+function openSettingsPanel() {
+  if (settingsPanelEl) return;
+
+  const overlay = document.createElement("div");
+  overlay.className = "side-panel-overlay";
+  overlay.id = "settingsOverlay";
+  overlay.innerHTML = `<div class="side-panel" id="settingsPanel">${settingsPanelContent()}</div>`;
+  document.body.appendChild(overlay);
+  settingsPanelEl = overlay;
+
+  overlay.addEventListener("click", e => { if (e.target === overlay) { overlay.remove(); settingsPanelEl = null; } });
+  wireSettingsPanel(overlay.querySelector("#settingsPanel"));
+}
+
 function refreshSettingsPanel() {
   if (!settingsPanelEl) return;
   const panel = settingsPanelEl.querySelector("#settingsPanel");
