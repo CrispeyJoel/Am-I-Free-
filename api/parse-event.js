@@ -70,7 +70,8 @@ const RESPONSE_SCHEMA = {
     "mandatory",
     "earnsMoney",
     "recurrence",
-    "reminder"
+    "reminder",
+    "allDay"
   ]
 };
 

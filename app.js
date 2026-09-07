@@ -346,16 +346,19 @@ async function parseQuickAddAI(text) {
     || categories[categories.length - 1];
   const [hh, mm] = (data.time || "12:00").split(":").map(Number);
 
+  const isAllDay = !!data.allDay;
+
   return {
     id: uid(), seriesId: uid(),
     title: cleanAITitle(data.title, text),
     categoryId: cat.id,
     dateISO: data.date || iso(selectedDate),
-    start: (isNaN(hh) ? 12 : hh) * 60 + (isNaN(mm) ? 0 : mm),
-    duration: Number.isFinite(data.duration) ? data.duration : 60,
-    bufferBefore: Number.isFinite(data.bufferBefore) ? data.bufferBefore : 30,
-    bufferAfter: Number.isFinite(data.bufferAfter) ? data.bufferAfter : 30,
-    reminder: data.reminder || "30m",
+    allDay: isAllDay,
+    start: isAllDay ? 0 : (isNaN(hh) ? 12 : hh) * 60 + (isNaN(mm) ? 0 : mm),
+    duration: isAllDay ? 0 : (Number.isFinite(data.duration) ? data.duration : 60),
+    bufferBefore: isAllDay ? 0 : (Number.isFinite(data.bufferBefore) ? data.bufferBefore : 30),
+    bufferAfter: isAllDay ? 0 : (Number.isFinite(data.bufferAfter) ? data.bufferAfter : 30),
+    reminder: data.reminder || (isAllDay ? "1d" : "30m"),
     mandatory: data.mandatory !== false,
     earnsMoney: !!data.earnsMoney,
     recurrence: data.recurrence || "none"
