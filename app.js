@@ -235,6 +235,10 @@ function parseQuickAdd(text) {
   let time = null;
 
   const lower = s.toLowerCase();
+  const isAllDay = /\ball[\s-]?day\b|\bwhole day\b/.test(lower);
+  if (isAllDay) {
+    s = s.replace(/\ball[\s-]?day\b|\bwhole day\b/gi, "").trim();
+  }
   if (/\btoday\b/.test(lower)) { dayOffset = 0; s = s.replace(/\btoday\b/i,""); }
   else if (/\btomorrow\b/.test(lower)) { dayOffset = 1; s = s.replace(/\btomorrow\b/i,""); }
   else {
@@ -274,18 +278,22 @@ function parseQuickAdd(text) {
   }
   const cat = categoryOf(categoryId);
 
+  const isAllDay = !!data.allDay;
+
   return {
     id: uid(), seriesId: uid(),
-    title, categoryId,
-    dateISO: iso(date),
-    start: time===null ? roundToNext30() : time,
-    duration: 60,
-    bufferBefore: 0,
-    bufferAfter: 0,
-    reminder: "30m",
-    mandatory: true,
-    earnsMoney: !!cat.earnsDefault,
-    recurrence: "none"
+    title: cleanAITitle(data.title, text),
+    categoryId: cat.id,
+    dateISO: data.date || iso(selectedDate),
+    allDay: isAllDay,
+    start: isAllDay ? 0 : (isNaN(hh) ? 12 : hh) * 60 + (isNaN(mm) ? 0 : mm),
+    duration: isAllDay ? 0 : (Number.isFinite(data.duration) ? data.duration : 60),
+    bufferBefore: isAllDay ? 0 : (Number.isFinite(data.bufferBefore) ? data.bufferBefore : 30),
+    bufferAfter: isAllDay ? 0 : (Number.isFinite(data.bufferAfter) ? data.bufferAfter : 30),
+    reminder: data.reminder || (isAllDay ? "1d" : "30m"),
+    mandatory: data.mandatory !== false,
+    earnsMoney: !!data.earnsMoney,
+    recurrence: data.recurrence || "none"
   };
 }
 function roundToNext30() {
@@ -1099,7 +1107,7 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       <h2>${isEdit ? t("editEvent") : t("newEvent")}</h2>
       <div class="field"><label>${t("titleLabel")}</label><input type="text" id="f-title" value="${escapeHtml(draft.title)}" /></div>
       <div class="field"><label>${t("dateLabel")}</label><input type="date" id="f-date" value="${draft.dateISO}" /></div>
-      <div class="togglerow"><span>${t("allDay")}</span><input type="checkbox" id="f-allday" ${draft.allDay?"checked":""} /></div>
+      <div class="togglerow" style="border-bottom:none"><span>${t("allDay")}</span><input type="checkbox" id="f-allday" ${draft.allDay?"checked":""} /></div>
       <div class="row2" id="f-timerow" style="${draft.allDay?"display:none;":""}">
         <div class="field"><label>${t("startTime")}</label><input type="time" id="f-time" value="${pad2(Math.floor(draft.start/60))}:${pad2(draft.start%60)}" /></div>
         <div class="field"><label>${t("endTime")}</label><input type="time" id="f-endtime" value="${pad2(Math.floor(((draft.start+draft.duration)%1440)/60))}:${pad2((draft.start+draft.duration)%60)}" /></div>

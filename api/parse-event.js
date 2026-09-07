@@ -53,7 +53,11 @@ const RESPONSE_SCHEMA = {
     reminder: {
       type: "STRING",
       enum: ["none", "30m", "1h", "6h", "12h", "1d", "1w", "1mo"]
-    }
+    },
+    allDay: {
+      type: "BOOLEAN",
+      description: "True if the event has no specific time — e.g. the user says 'all day', 'whole day', a birthday, a deadline, or a general reminder for that date with no time mentioned at all."
+    },
   },
   required: [
     "title",
@@ -152,6 +156,8 @@ Rules:
 1. Title must be 1 to 6 words naming only the activity, person, or place.
 2. Strip dates, times, days of the week, and setup phrasing (e.g. "remind me to", "schedule").
 3. Default duration is 60 mins. Default buffers are 30 mins before/after. Default category is Personal if unclear.
+
+If the event has no meaningful specific time (the user says "all day", "whole day", mentions a birthday, deadline, or general reminder with no time), set allDay to true and default time to "09:00".
 
 User text: ${JSON.stringify(input)}`;
 
