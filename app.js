@@ -73,7 +73,7 @@ setPersistence(auth, browserLocalPersistence).catch(error => {
 const DAY_START_MIN = 6 * 60;   // 6:00am
 const DAY_END_MIN = 23 * 60;    // 11:00pm
 const HOUR_PX = 56;
-const LOVE_CATEGORY = { id: "love", name: "❤️", color: "#FF4FA3", earnsDefault: false, special: "love" };
+const LOVE_CATEGORY = { id: "love", name: "Liebe", color: "#FF4FA3", earnsDefault: false, special: "love" };
 
 const DEFAULT_CATEGORIES = [
   { id: "work",     name: "Work",     color: "#3F7D58", earnsDefault: true  },
