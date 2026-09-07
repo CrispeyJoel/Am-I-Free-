@@ -266,7 +266,7 @@ function parseQuickAdd(text) {
 
   s = s.replace(/[,\-–]+$/,"").replace(/^[,\-–]+/,"").replace(/\s{2,}/g," ").trim();
   const title = s || "Untitled";
-  const date = addDays(startOfDay(new Date()), dayOffset===null?0:dayOffset);
+  const date = dayOffset===null ? selectedDate : addDays(startOfDay(new Date()), dayOffset);
 
   let categoryId = categories[categories.length-1].id;
   for (const c of categories) {
@@ -344,7 +344,7 @@ async function parseQuickAddAI(text) {
     id: uid(), seriesId: uid(),
     title: cleanAITitle(data.title, text),
     categoryId: cat.id,
-    dateISO: data.date || iso(new Date()),
+    dateISO: data.date || iso(selectedDate),
     start: (isNaN(hh) ? 12 : hh) * 60 + (isNaN(mm) ? 0 : mm),
     duration: Number.isFinite(data.duration) ? data.duration : 60,
     bufferBefore: Number.isFinite(data.bufferBefore) ? data.bufferBefore : 30,
