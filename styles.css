@@ -1134,3 +1134,32 @@ button {
   color: var(--danger);
   font-weight: 600;
 }
+
+.allday-strip {
+  padding: 6px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.allday-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: white;
+}
+
+.allday-chip.optional {
+  background: var(--gray-event) !important;
+  color: var(--ink);
+  border-left: 4px solid;
+}
+
+.allday-chip .dollar {
+  margin-left: auto;
+  font-weight: 700;
+}

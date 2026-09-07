@@ -17,7 +17,7 @@ export const STRINGS = {
     freeRest:"Free for the rest of the day", busyUntil:"Busy until", freeFor:"Free for", nextAt:"next at",
     deleteRepeating:"Delete this repeating event", deleteRepeatingDesc:"This event repeats. What would you like to do?",
     cancelDelete:"Cancel", deleteJustThis:"Delete just this date",
-    deleteAllFuture:"Delete this and all future dates", manageCategories:"Manage categories", addCategory:"+ Add category"
+    deleteAllFuture:"Delete this and all future dates", manageCategories:"Manage categories", addCategory:"+ Add category", allDay: "All Day"
   },
   de: {
     today:"Heute", settings:"Einstellungen", week:"Woche", month:"Monat",
@@ -35,7 +35,7 @@ export const STRINGS = {
     freeRest:"Frei für den Rest des Tages", busyUntil:"Beschäftigt bis", freeFor:"Frei für", nextAt:"nächstes um",
     deleteRepeating:"Diesen wiederkehrenden Termin löschen", deleteRepeatingDesc:"Dieser Termin wiederholt sich. Was möchtest du tun?",
     cancelDelete:"Abbrechen", deleteJustThis:"Nur dieses Datum löschen",
-    deleteAllFuture:"Diesen und alle zukünftigen löschen", manageCategories:"Kategorien verwalten", addCategory:"+ Kategorie hinzufügen"
+    deleteAllFuture:"Diesen und alle zukünftigen löschen", manageCategories:"Kategorien verwalten", addCategory:"+ Kategorie hinzufügen", allDay:"Ganztägig"
   },
   mk: {
     today:"Денес", settings:"Поставки", week:"Недела", month:"Месец",
@@ -53,7 +53,7 @@ export const STRINGS = {
     freeRest:"Слободен за остатокот од денот", busyUntil:"Зафатен до", freeFor:"Слободен за", nextAt:"следно во",
     deleteRepeating:"Избриши го овој повторувачки настан", deleteRepeatingDesc:"Овој настан се повторува. Што сакате да направите?",
     cancelDelete:"Откажи", deleteJustThis:"Избриши само овој датум",
-    deleteAllFuture:"Избриши го овој и сите идни", manageCategories:"Управувај со категории", addCategory:"+ Додади категорија"
+    deleteAllFuture:"Избриши го овој и сите идни", manageCategories:"Управувај со категории", addCategory:"+ Додади категорија", allDay:"Цел ден"
   },
   sr: {
     today:"Danas", settings:"Podešavanja", week:"Nedelja", month:"Mesec",
@@ -71,6 +71,6 @@ export const STRINGS = {
     freeRest:"Slobodan za ostatak dana", busyUntil:"Zauzet do", freeFor:"Slobodan za", nextAt:"sledeće u",
     deleteRepeating:"Obriši ovaj ponavljajući događaj", deleteRepeatingDesc:"Ovaj događaj se ponavlja. Šta želite da uradite?",
     cancelDelete:"Otkaži", deleteJustThis:"Obriši samo ovaj datum",
-    deleteAllFuture:"Obriši ovaj i sve buduće", manageCategories:"Upravljaj kategorijama", addCategory:"+ Dodaj kategoriju"
+    deleteAllFuture:"Obriši ovaj i sve buduće", manageCategories:"Upravljaj kategorijama", addCategory:"+ Dodaj kategoriju", allDay:"Ceo dan"
   }
 };

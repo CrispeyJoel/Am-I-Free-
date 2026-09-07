@@ -198,7 +198,7 @@ function eventsOnDate(date) { return events.filter(ev => occursOn(ev, date)); }
 
 /* ---------- Free-time calc ---------- */
 function busyIntervals(date) {
-  return eventsOnDate(date).map(ev => ({
+  return eventsOnDate(date).filter(ev => !ev.allDay).map(ev => ({
     start: ev.start - ev.bufferBefore,
     end: ev.start + ev.duration + ev.bufferAfter,
     ev
@@ -433,12 +433,14 @@ function renderScroller() {
 
 function renderDayCol(date) {
   const evs = eventsOnDate(date);
+  const timedEvs = evs.filter(e => !e.allDay);
+  const alldayEvs = evs.filter(e => e.allDay);
   let hours = "";
   for (let m=DAY_START_MIN; m<=DAY_END_MIN; m+=60) {
     hours += `<div class="hourrow"><span class="label">${minToLabel(m)}</span></div>`;
   }
   let blocks = "";
-  for (const ev of evs) {
+  for (const ev of timedEvs) {
     const cat = categoryOf(ev.categoryId);
     const top = (ev.start - DAY_START_MIN)/60*HOUR_PX;
     const height = Math.max(ev.duration/60*HOUR_PX, 24);
@@ -465,7 +467,18 @@ function renderDayCol(date) {
   const nowMin = new Date().getHours()*60+new Date().getMinutes();
   const showNow = sameDay(date,new Date()) && nowMin>=DAY_START_MIN && nowMin<=DAY_END_MIN;
   const nowLine = showNow ? `<div class="nowline" id="nowline" style="top:${(nowMin-DAY_START_MIN)/60*HOUR_PX}px"></div>` : "";
+  const alldayHtml = alldayEvs.length
+    ? `<div class="allday-strip">${alldayEvs.map(ev => {
+        const cat = categoryOf(ev.categoryId);
+        return `<div class="allday-chip ${ev.mandatory?"":"optional"}" style="background:${cat.color};border-color:${cat.color}" data-edit="${ev.id}" data-date="${iso(date)}">
+          <span>${escapeHtml(ev.title)}</span>
+          ${ev.earnsMoney?`<span class="dollar">$</span>`:""}
+        </div>`;
+      }).join("")}</div>`
+    : "";
+
   return `<div class="daycol">
+    ${alldayHtml}
     <div class="timeline" style="height:${((DAY_END_MIN-DAY_START_MIN)/60+1)*HOUR_PX}px">
       ${hours}
       <div class="eventlayer">${blocks}${nowLine}</div>
@@ -1086,7 +1099,8 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       <h2>${isEdit ? t("editEvent") : t("newEvent")}</h2>
       <div class="field"><label>${t("titleLabel")}</label><input type="text" id="f-title" value="${escapeHtml(draft.title)}" /></div>
       <div class="field"><label>${t("dateLabel")}</label><input type="date" id="f-date" value="${draft.dateISO}" /></div>
-      <div class="row2">
+      <div class="togglerow"><span>${t("allDay")}</span><input type="checkbox" id="f-allday" ${draft.allDay?"checked":""} /></div>
+      <div class="row2" id="f-timerow" style="${draft.allDay?"display:none;":""}">
         <div class="field"><label>${t("startTime")}</label><input type="time" id="f-time" value="${pad2(Math.floor(draft.start/60))}:${pad2(draft.start%60)}" /></div>
         <div class="field"><label>${t("endTime")}</label><input type="time" id="f-endtime" value="${pad2(Math.floor(((draft.start+draft.duration)%1440)/60))}:${pad2((draft.start+draft.duration)%60)}" /></div>
       </div>
@@ -1099,7 +1113,7 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
           ${categories.map(c=>`<div class="chip ${c.id===draft.categoryId?"selected":""}" data-cat="${c.id}"><span class="swatch" style="background:${c.color}"></span>${c.name}</div>`).join("")}
         </div>
       </div>
-      <div class="row2">
+      <div class="row2" id="f-bufferrow" style="${draft.allDay?"display:none;":""}">
         <div class="field">
           <label>${t("bufferBefore")}</label>
           <select id="f-bufbefore">
@@ -1168,6 +1182,15 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
   }
   attachCatChipHandlers();
 
+  const alldayCheckbox = overlay.querySelector("#f-allday");
+  const timeRow = overlay.querySelector("#f-timerow");
+  const bufferRow = overlay.querySelector("#f-bufferrow");
+  alldayCheckbox.addEventListener("change", () => {
+    const isAllDay = alldayCheckbox.checked;
+    timeRow.style.display = isAllDay ? "none" : "";
+    bufferRow.style.display = isAllDay ? "none" : "";
+  });
+
   overlay.querySelector("#manageCatsBtn").addEventListener("click", () => {
     openCategoryManager(() => {
       if (!categories.find(c => c.id === chosenCat)) chosenCat = categories[0].id;
@@ -1192,20 +1215,30 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
   }
 
   overlay.querySelector("#f-save").addEventListener("click", ()=>{
-    const [hh,mm] = overlay.querySelector("#f-time").value.split(":").map(Number);
-    const [ehh,emm] = overlay.querySelector("#f-endtime").value.split(":").map(Number);
-    const startMin = hh*60+mm;
-    let endMin = ehh*60+emm;
-    if (endMin <= startMin) endMin += 24*60; // crosses midnight
+    const isAllDay = overlay.querySelector("#f-allday").checked;
+    let startMin = 0, duration = 0, bufferBefore = 0, bufferAfter = 0;
+
+    if (!isAllDay) {
+      const [hh,mm] = overlay.querySelector("#f-time").value.split(":").map(Number);
+      const [ehh,emm] = overlay.querySelector("#f-endtime").value.split(":").map(Number);
+      startMin = hh*60+mm;
+      let endMin = ehh*60+emm;
+      if (endMin <= startMin) endMin += 24*60; // crosses midnight
+      duration = Math.max(5, endMin - startMin);
+      bufferBefore = parseInt(overlay.querySelector("#f-bufbefore").value,10) || 0;
+      bufferAfter = parseInt(overlay.querySelector("#f-bufafter").value,10) || 0;
+    }
+
     const updated = {
       ...draft,
       title: overlay.querySelector("#f-title").value.trim() || "Untitled",
       dateISO: overlay.querySelector("#f-date").value,
+      allDay: isAllDay,
       start: startMin,
-      duration: Math.max(5, endMin - startMin),
+      duration: duration,
       categoryId: chosenCat,
-      bufferBefore: parseInt(overlay.querySelector("#f-bufbefore").value,10) || 0,
-      bufferAfter: parseInt(overlay.querySelector("#f-bufafter").value,10) || 0,
+      bufferBefore: bufferBefore,
+      bufferAfter: bufferAfter,
       recurrence: overlay.querySelector("#f-recur").value,
       reminder: overlay.querySelector("#f-reminder").value,
       mandatory: overlay.querySelector("#f-mandatory").checked,

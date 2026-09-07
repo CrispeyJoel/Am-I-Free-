@@ -168,7 +168,7 @@ export default async function handler(req, res) {
         const lastDate = localNow.startOf("day").plus({ days: 35 });
 
         for (const ev of events) {
-          if (!ev.dateISO || ev.start == null) continue;
+          if (!ev.dateISO || ev.start == null || ev.allDay) continue;
 
           let cursor = firstDate;
 
