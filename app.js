@@ -101,6 +101,8 @@ let selectedDate = startOfDay(new Date());
 let weekStart = startOfWeek(selectedDate);
 let view = "day"; // "day" | "month"
 let monthCursor = startOfMonth(selectedDate);
+let renderedWindowStart = null;
+let currentWindowLength = WINDOW_TOTAL;
 
 /* ---------- Storage / util ---------- */
 function load(key, fallback) {
@@ -495,9 +497,10 @@ function renderDayPips() {
 }
 
 function renderScroller() {
-  const windowStart = addDays(weekStart, -WINDOW_BEFORE);
+  renderedWindowStart = addDays(weekStart, -WINDOW_BEFORE);
+  currentWindowLength = WINDOW_TOTAL;
   let html = `<div class="dayscroller" id="scroller">`;
-  for (let i=0;i<WINDOW_TOTAL;i++) html += renderDayCol(addDays(windowStart, i));
+  for (let i=0;i<WINDOW_TOTAL;i++) html += renderDayCol(addDays(renderedWindowStart, i));
   return html + `</div>`;
 }
 
@@ -561,7 +564,7 @@ function renderDayCol(date) {
       }).join("")}</div>`
     : "";
 
-  return `<div class="daycol">
+  return `<div class="daycol" data-date="${iso(date)}">
     ${alldayHtml}
     <div class="timeline" style="height:${((DAY_END_MIN-DAY_START_MIN)/60+1)*HOUR_PX}px">
       ${hours}
@@ -606,28 +609,22 @@ function escapeHtml(s) { return s.replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;"
 /* ---------- Scroll / nav handlers ---------- */
 function scrollToDay(date, smooth=true) {
   const scroller = document.getElementById("scroller");
-  if (!scroller) return;
-  const windowStart = addDays(weekStart, -WINDOW_BEFORE);
-  const idx = dayDiff(date, windowStart);
+  if (!scroller || !renderedWindowStart) return;
+  const idx = dayDiff(date, renderedWindowStart);
   scroller.scrollTo({ left: idx*scroller.clientWidth, behavior: smooth?"smooth":"auto" });
 }
+
+const EDGE_THRESHOLD = 3;   // start extending when within this many columns of an edge
+const EXTEND_BY = 7;        // how many days to add each time we extend
 
 let scrollTimer;
 function onScrollerScroll(e) {
   clearTimeout(scrollTimer);
   scrollTimer = setTimeout(()=>{
-    const idx = Math.round(e.target.scrollLeft / e.target.clientWidth);
-    const windowStart = addDays(weekStart, -WINDOW_BEFORE);
-    const d = addDays(windowStart, idx);
-
-    // Getting close to either edge of the rendered window — recenter it on the
-    // day we've scrolled to, so there's always more to swipe into either direction.
-    if (idx <= 2 || idx >= WINDOW_TOTAL - 3) {
-      selectedDate = d;
-      weekStart = startOfWeek(d);
-      render();
-      return;
-    }
+    const scroller = e.target;
+    if (!renderedWindowStart) return;
+    const idx = Math.round(scroller.scrollLeft / scroller.clientWidth);
+    const d = addDays(renderedWindowStart, idx);
 
     if (!sameDay(d, selectedDate)) {
       selectedDate = d;
@@ -639,13 +636,48 @@ function onScrollerScroll(e) {
         const pipsEl = document.querySelector(".daypips");
         if (pipsEl) pipsEl.outerHTML = renderDayPips();
       } else {
-        const pipIdx = idx - WINDOW_BEFORE;
+        const pipIdx = dayDiff(d, weekStart);
         document.querySelectorAll(".pip").forEach((p,i)=> p.classList.toggle("selected", i===pipIdx));
       }
       const banner = document.querySelector(".freebanner");
       if (banner) banner.outerHTML = renderFreeBanner();
     }
+
+    if (idx < EDGE_THRESHOLD) {
+      prependDays(scroller, EXTEND_BY);
+    } else if (idx > currentWindowLength - EDGE_THRESHOLD - 1) {
+      appendDays(scroller, EXTEND_BY);
+    }
   }, 80);
+}
+
+function prependDays(scroller, count) {
+  let html = "";
+  for (let i=count; i>=1; i--) html += renderDayCol(addDays(renderedWindowStart, -i));
+  const prevScrollLeft = scroller.scrollLeft;
+  scroller.insertAdjacentHTML("afterbegin", html);
+  renderedWindowStart = addDays(renderedWindowStart, -count);
+  currentWindowLength += count;
+  scroller.scrollLeft = prevScrollLeft + count * scroller.clientWidth;
+  bindNewColumns(scroller, count, true);
+}
+
+function appendDays(scroller, count) {
+  const start = addDays(renderedWindowStart, currentWindowLength);
+  let html = "";
+  for (let i=0; i<count; i++) html += renderDayCol(addDays(start, i));
+  scroller.insertAdjacentHTML("beforeend", html);
+  currentWindowLength += count;
+  bindNewColumns(scroller, count, false);
+}
+
+function bindNewColumns(scroller, count, prepended) {
+  const cols = scroller.querySelectorAll(".daycol");
+  const target = prepended ? Array.from(cols).slice(0, count) : Array.from(cols).slice(-count);
+  target.forEach(el => {
+    const d = dateFromISO(el.dataset.date);
+    if (view === "day") attachTimelineDragHandlers(el, d);
+  });
 }
 
 let dragState = null;
@@ -876,65 +908,63 @@ function startVoiceInput() {
 }
 
 /* ---------- Event handlers ---------- */
+/* ---------- Event handlers ---------- */
 function attachHandlers() {
-  app.querySelectorAll("[data-act]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const act = btn.dataset.act;
-      if (act === "today") { weekStart = startOfWeek(new Date()); selectedDate = startOfDay(new Date()); monthCursor = startOfMonth(new Date()); render(); }
-      if (act === "prev") { view === "month" ? shiftMonth(-1) : shiftWeek(-1); }
-      if (act === "next") { view === "month" ? shiftMonth(1) : shiftWeek(1); }
-      if (act === "settings") { openSettingsPanel(); }
-    });
-  });
-  app.querySelectorAll("[data-view]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{ view = btn.dataset.view; render(); });
-  });
-  app.querySelectorAll("[data-jump]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const idx = parseInt(btn.dataset.jump,10);
-      selectedDate = addDays(weekStart, idx);
-      scrollToDay(selectedDate, true);
-      render();
-    });
-  });
-  app.querySelectorAll("[data-goto]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const d = dateFromISO(btn.dataset.goto);
-      selectedDate = startOfDay(d); weekStart = startOfWeek(selectedDate); view="day"; render();
-    });
-  });
-  app.querySelectorAll("[data-edit]").forEach(el=>{
-    el.addEventListener("click", ()=> openSheet(events.find(e=>e.id===el.dataset.edit), false, el.dataset.date));
-  });
   const scroller = document.getElementById("scroller");
   if (scroller) scroller.addEventListener("scroll", onScrollerScroll);
 
-  document.querySelectorAll(".daycol").forEach((el, idx) => {
-    if (view === "day") attachTimelineDragHandlers(el, addDays(weekStart, idx));
+  document.querySelectorAll(".daycol[data-date]").forEach((el) => {
+    if (view === "day") {
+      const d = dateFromISO(el.dataset.date);
+      attachTimelineDragHandlers(el, d);
+    }
+  });
+}
+
+function setupDelegatedHandlers() {
+  app.addEventListener("click", (e) => {
+    const actBtn = e.target.closest("[data-act]");
+    if (actBtn) {
+      const act = actBtn.dataset.act;
+      if (act === "today") { weekStart = startOfWeek(new Date()); selectedDate = startOfDay(new Date()); monthCursor = startOfMonth(new Date()); render(); }
+      else if (act === "prev") { view === "month" ? shiftMonth(-1) : shiftWeek(-1); }
+      else if (act === "next") { view === "month" ? shiftMonth(1) : shiftWeek(1); }
+      else if (act === "settings") { openSettingsPanel(); }
+      return;
+    }
+
+    const viewBtn = e.target.closest("[data-view]");
+    if (viewBtn) { view = viewBtn.dataset.view; render(); return; }
+
+    const jumpBtn = e.target.closest("[data-jump]");
+    if (jumpBtn) {
+      const idx = parseInt(jumpBtn.dataset.jump, 10);
+      selectedDate = addDays(weekStart, idx);
+      scrollToDay(selectedDate, true);
+      render();
+      return;
+    }
+
+    const gotoBtn = e.target.closest("[data-goto]");
+    if (gotoBtn) {
+      const d = dateFromISO(gotoBtn.dataset.goto);
+      selectedDate = startOfDay(d); weekStart = startOfWeek(selectedDate); view = "day"; render();
+      return;
+    }
+
+    const editEl = e.target.closest("[data-edit]");
+    if (editEl) {
+      openSheet(events.find(ev => ev.id === editEl.dataset.edit), false, editEl.dataset.date);
+      return;
+    }
+
+    if (e.target.closest("#quickadd")) { submitQuickAdd(); return; }
+    if (e.target.closest("#voicebtn")) { startVoiceInput(); return; }
   });
 
-  const qa = document.getElementById("quickadd");
-  const qi = document.getElementById("quickinput");
-  const voice = document.getElementById("voicebtn");
-  const exportBtn = document.getElementById("exportBtn");
-  const importBtn = document.getElementById("importBtn");
-  const importFile = document.getElementById("importFile");
-
-  if (exportBtn) exportBtn.addEventListener("click", exportBackup);
-  if (importBtn) importBtn.addEventListener("click", () => importFile && importFile.click());
-  if (importFile) importFile.addEventListener("change", (e) => {
-    if (e.target.files && e.target.files[0]) importBackup(e.target.files[0]);
-    e.target.value = "";
+  app.addEventListener("keydown", (e) => {
+    if (e.target && e.target.id === "quickinput" && e.key === "Enter") submitQuickAdd();
   });
-
-  if (qa) {
-    qa.addEventListener("click", () => submitQuickAdd());
-  }
-
-  if (voice) {
-    voice.addEventListener("click", startVoiceInput);
-  }
-  if (qi) qi.addEventListener("keydown", e=>{ if (e.key==="Enter") submitQuickAdd(); });
 }
 
 async function submitQuickAdd() {
@@ -1940,4 +1970,5 @@ async function handleAuthChange(user) {
 }
 
 onAuthStateChanged(auth, handleAuthChange);
+setupDelegatedHandlers();
 render();
