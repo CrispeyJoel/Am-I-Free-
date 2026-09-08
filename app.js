@@ -73,6 +73,8 @@ setPersistence(auth, browserLocalPersistence).catch(error => {
 const DAY_START_MIN = 6 * 60;   // 6:00am
 const DAY_END_MIN = 23 * 60;    // 11:00pm
 const HOUR_PX = 56;
+const WINDOW_BEFORE = 7;   // days rendered before the current week's Monday
+const WINDOW_TOTAL = 21;   // total days rendered in the scroller (3 weeks' worth)
 const LOVE_CATEGORY = { id: "love", name: "Liebe", color: "#FF4FA3", earnsDefault: false, special: "love" };
 
 const DEFAULT_CATEGORIES = [
@@ -491,8 +493,9 @@ function renderDayPips() {
 }
 
 function renderScroller() {
+  const windowStart = addDays(weekStart, -WINDOW_BEFORE);
   let html = `<div class="dayscroller" id="scroller">`;
-  for (let i=0;i<7;i++) html += renderDayCol(addDays(weekStart,i));
+  for (let i=0;i<WINDOW_TOTAL;i++) html += renderDayCol(addDays(windowStart, i));
   return html + `</div>`;
 }
 
@@ -602,7 +605,8 @@ function escapeHtml(s) { return s.replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;"
 function scrollToDay(date, smooth=true) {
   const scroller = document.getElementById("scroller");
   if (!scroller) return;
-  const idx = dayDiff(date, weekStart);
+  const windowStart = addDays(weekStart, -WINDOW_BEFORE);
+  const idx = dayDiff(date, windowStart);
   scroller.scrollTo({ left: idx*scroller.clientWidth, behavior: smooth?"smooth":"auto" });
 }
 
@@ -611,10 +615,22 @@ function onScrollerScroll(e) {
   clearTimeout(scrollTimer);
   scrollTimer = setTimeout(()=>{
     const idx = Math.round(e.target.scrollLeft / e.target.clientWidth);
-    const d = addDays(weekStart, idx);
+    const windowStart = addDays(weekStart, -WINDOW_BEFORE);
+    const d = addDays(windowStart, idx);
+
+    // Getting close to either edge of the rendered window — recenter it on the
+    // day we've scrolled to, so there's always more to swipe into either direction.
+    if (idx <= 2 || idx >= WINDOW_TOTAL - 3) {
+      selectedDate = d;
+      weekStart = startOfWeek(d);
+      render();
+      return;
+    }
+
     if (!sameDay(d, selectedDate)) {
       selectedDate = d;
-      document.querySelectorAll(".pip").forEach((p,i)=> p.classList.toggle("selected", i===idx));
+      const pipIdx = idx - WINDOW_BEFORE;
+      document.querySelectorAll(".pip").forEach((p,i)=> p.classList.toggle("selected", i===pipIdx));
       const banner = document.querySelector(".freebanner");
       if (banner) banner.outerHTML = renderFreeBanner();
     }
