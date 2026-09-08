@@ -629,8 +629,17 @@ function onScrollerScroll(e) {
 
     if (!sameDay(d, selectedDate)) {
       selectedDate = d;
-      const pipIdx = idx - WINDOW_BEFORE;
-      document.querySelectorAll(".pip").forEach((p,i)=> p.classList.toggle("selected", i===pipIdx));
+      const newWeekStart = startOfWeek(d);
+      if (!sameDay(newWeekStart, weekStart)) {
+        weekStart = newWeekStart;
+        const topbar = document.querySelector(".topbar");
+        if (topbar) topbar.outerHTML = renderTopbar();
+        const pipsEl = document.querySelector(".daypips");
+        if (pipsEl) pipsEl.outerHTML = renderDayPips();
+      } else {
+        const pipIdx = idx - WINDOW_BEFORE;
+        document.querySelectorAll(".pip").forEach((p,i)=> p.classList.toggle("selected", i===pipIdx));
+      }
       const banner = document.querySelector(".freebanner");
       if (banner) banner.outerHTML = renderFreeBanner();
     }
