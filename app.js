@@ -113,14 +113,16 @@ function load(key, fallback) {
   catch { return fallback; }
 }
 async function save() {
+  const savedAt = Date.now();
   localStorage.setItem("af_events", JSON.stringify(events));
   localStorage.setItem("af_categories", JSON.stringify(categories));
+  localStorage.setItem("af_last_local_save", String(savedAt));
 
   if (currentUser && !suppressNextCloudPush) {
     try {
       await setDoc(
         doc(db, "users", currentUser.uid, "data", "events"),
-        { list: events, categories, updatedAt: Date.now() },
+        { list: events, categories, updatedAt: savedAt },
         { merge: true }
       );
       lastSyncedAt = Date.now();
@@ -1870,11 +1872,21 @@ async function syncCloudData(user) {
         const remote = snap.data() || {};
         const remoteEvents = Array.isArray(remote.list) ? remote.list : [];
         const remoteCategories = Array.isArray(remote.categories) ? remote.categories : null;
+        const remoteUpdatedAt = remote.updatedAt || 0;
+        const lastLocalSaveAt = parseInt(localStorage.getItem("af_last_local_save") || "0", 10);
 
         // If the cloud looks empty but we currently have real local data,
         // treat the cloud as behind — push our data up instead of accepting
         // the empty result as truth.
-        if (remoteEvents.length === 0 && Array.isArray(events) && events.length > 0) {
+        //
+        // Also guard against the cloud reporting a version OLDER than a local
+        // change we already know we made — this can happen if a previous save
+        // never actually reached the server before the app closed. In that
+        // case, don't accept the stale data; re-push what we have instead.
+        const remoteLooksBehind = (remoteEvents.length === 0 && Array.isArray(events) && events.length > 0)
+          || (lastLocalSaveAt > 0 && remoteUpdatedAt < lastLocalSaveAt);
+
+        if (remoteLooksBehind) {
           suppressNextCloudPush = true;
           await setDoc(dataRef, { list: events, categories, updatedAt: Date.now() }, { merge: true });
           lastSyncedAt = Date.now();
