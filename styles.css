@@ -434,17 +434,18 @@ button {
 
 .nowline-label {
   position: absolute;
-  left: 0;
-  width: 40px;
+  left: 2px;
+  width: 42px;
   transform: translateY(-50%);
   background: var(--danger);
   color: white;
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 700;
   text-align: center;
-  padding: 2px 0;
+  padding: 2px 1px;
   border-radius: 4px;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .event.love-cat {

@@ -1838,6 +1838,11 @@ async function syncCloudData(user) {
     if (unsubscribeCloudData) unsubscribeCloudData();
 
     unsubscribeCloudData = onSnapshot(dataRef, async snap => {
+      // Our own writes echo back here optimistically before the server even
+      // confirms them — that's not new information, so ignore it entirely
+      // rather than treating it like a genuine remote change.
+      if (snap.metadata.hasPendingWrites) return;
+
       try {
         // Always back up whatever's currently in memory before touching it,
         // so a bad or delayed remote read can never destroy real data.
