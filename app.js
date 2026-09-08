@@ -15,7 +15,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
 import {
-  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
   doc,
   setDoc,
   getDoc,
@@ -43,7 +44,9 @@ const VAPID_PUBLIC_KEY =
 
 const fbApp = initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(fbApp);
-const db = getFirestore(fbApp);
+const db = initializeFirestore(fbApp, {
+  localCache: persistentLocalCache()
+});
 
 let currentUser = null;
 let suppressNextCloudPush = false;
