@@ -446,24 +446,26 @@ function renderTopbar() {
     : `${weekStart.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${addDays(weekStart, 6).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
 
   return `
-    <div class="topbar">
-      <button class="iconbtn" data-act="prev">‹</button>
-      <div style="text-align:center">
-        <div class="weeklabel">${label}</div>
+    <div id="topbarWrap">
+      <div class="topbar">
+        <button class="iconbtn" data-act="prev">‹</button>
+        <div style="text-align:center">
+          <div class="weeklabel">${label}</div>
+        </div>
+        <button class="iconbtn" data-act="next">›</button>
       </div>
-      <button class="iconbtn" data-act="next">›</button>
-    </div>
 
-    <div class="topbar-actions">
-      <button class="todaybtn" data-act="today" title="${t("today")}">${t("today")}</button>
-      <div class="viewtoggle">
-        <button data-view="day" class="${view === "day" ? "active" : ""}">${t("week")}</button>
-        <button data-view="month" class="${view === "month" ? "active" : ""}">${t("month")}</button>
+      <div class="topbar-actions">
+        <button class="todaybtn" data-act="today" title="${t("today")}">${t("today")}</button>
+        <div class="viewtoggle">
+          <button data-view="day" class="${view === "day" ? "active" : ""}">${t("week")}</button>
+          <button data-view="month" class="${view === "month" ? "active" : ""}">${t("month")}</button>
+        </div>
+        <button class="todaybtn" data-act="settings" title="${t("settings")}">${t("settings")}</button>
       </div>
-      <button class="todaybtn" data-act="settings" title="${t("settings")}">${t("settings")}</button>
-    </div>
 
-    <div class="synctag ${syncFailed ? "fail" : ""}" id="synctag">${renderSyncTag()}</div>
+      <div class="synctag ${syncFailed ? "fail" : ""}" id="synctag">${renderSyncTag()}</div>
+    </div>
   `;
 }
 
@@ -632,8 +634,8 @@ function onScrollerScroll(e) {
       const newWeekStart = startOfWeek(d);
       if (!sameDay(newWeekStart, weekStart)) {
         weekStart = newWeekStart;
-        const topbar = document.querySelector(".topbar");
-        if (topbar) topbar.outerHTML = renderTopbar();
+        const topbarWrap = document.getElementById("topbarWrap");
+        if (topbarWrap) topbarWrap.outerHTML = renderTopbar();
         const pipsEl = document.querySelector(".daypips");
         if (pipsEl) pipsEl.outerHTML = renderDayPips();
       } else {
