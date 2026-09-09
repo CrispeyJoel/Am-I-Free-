@@ -1339,6 +1339,7 @@ function openCategoryManager(onDone) {
 function openHelpSheet() {
   const overlay = document.createElement("div");
   overlay.className = "overlay";
+  overlay.style.zIndex = "60";
   overlay.innerHTML = `
     <div class="sheet">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
