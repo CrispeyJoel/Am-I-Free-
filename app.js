@@ -438,7 +438,7 @@ function render() {
   app.innerHTML = `
     ${renderTopbar()}
     ${view==="day" ? renderFreeBanner()+renderDayPips()+renderScroller() : renderMonth()}
-    ${renderQuickBar()}
+    ${renderFabs()}
   `;
   attachHandlers();
   if (view==="day") {
@@ -468,7 +468,8 @@ function renderTopbar() {
           <button data-view="day" class="${view === "day" ? "active" : ""}">${t("week")}</button>
           <button data-view="month" class="${view === "month" ? "active" : ""}">${t("month")}</button>
         </div>
-                <button class="todaybtn" data-act="agenda" title="Day list">View</button>
+        <button class="todaybtn" data-act="agenda" title="Day list">View</button>
+        <button class="iconbtn" data-act="settings" title="${t("settings")}">⚙</button>
       </div>
 
       <div class="synctag ${syncFailed ? "fail" : ""}" id="synctag">${renderSyncTag()}</div>
@@ -598,14 +599,14 @@ function renderMonth() {
   return `<div class="monthgrid">${head}${body}</div>`;
 }
 
-function renderQuickBar() {
-  return `<div class="quickbar">
-    <button id="voicebtn" type="button" title="${t("voice")}" aria-label="${t("voice")}">
-      <span id="voiceLabel">${t("voice")}</span>
+function renderFabs() {
+  return `<div class="fab-stack">
+    <button id="voicebtn" class="fab fab-voice" type="button" title="${t("voice")}" aria-label="${t("voice")}">
+      <span class="fab-icon">🎙️</span>
+      <span id="voiceLabel" class="sr-only">${t("voice")}</span>
       <span id="aiStatusDot" class="ai-status-dot ${aiStatus}"></span>
     </button>
-    <button id="addbtn" type="button" class="addbtn-main" title="${t("add")}" aria-label="${t("add")}">+</button>
-        <button class="todaybtn" data-act="settings" title="${t("settings")}">${t("settings")}</button>
+    <button id="addbtn" class="fab fab-main" type="button" title="${t("add")}" aria-label="${t("add")}">+</button>
   </div>`;
 }
 
