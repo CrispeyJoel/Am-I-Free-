@@ -96,6 +96,24 @@ button {
   gap: 12px;
 }
 
+.fab-icon-spinner {
+  display: none;
+  animation: fab-spin 0.8s linear infinite;
+}
+
+#voicebtn.thinking .fab-icon-mic {
+  display: none;
+}
+
+#voicebtn.thinking .fab-icon-spinner {
+  display: block;
+}
+
+@keyframes fab-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .topbar-side-left {
   justify-content: flex-start;
 }
