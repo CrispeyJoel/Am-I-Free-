@@ -456,9 +456,8 @@ const app = document.getElementById("app");
 function render() {
   app.innerHTML = `
     ${renderTopbar()}
-    ${view==="day" ? renderFreeBanner()+renderDayPips()+renderScroller() : renderMonth()}
+    ${view==="day" ? renderFreeBanner()+renderTodayViewRow()+renderDayPips()+renderScroller() : renderMonth()}
     ${renderFabs()}
-    ${renderLeftStack()}
   `;
   attachHandlers();
   if (view==="day") {
@@ -503,6 +502,13 @@ function renderSyncTag() {
   if (!currentUser) return t("notSignedIn");
   if (syncFailed) return t("cloudSaveFailed");
   return lastSyncedAt ? `${t("syncedAt")} ${formatSyncTime(lastSyncedAt)}` : t("signedIn");
+}
+
+function renderTodayViewRow() {
+  return `<div class="today-view-row">
+    <button class="todaybtn" data-act="today" title="${t("today")}">${t("today")}</button>
+    <button class="todaybtn" data-act="agenda" title="Day list">View</button>
+  </div>`;
 }
 
 function renderFreeBanner() {
@@ -692,19 +698,6 @@ function appendMonths(scroller, count) {
   currentMonthWindowLength += count;
 }
 
-// function renderLeftStack() {
-//   return `<div class="fab-stack-left">
-//     <button class="todaybtn" data-act="today" title="${t("today")}">${t("today")}</button>
-//     <button class="todaybtn" data-act="agenda" title="Day list">View</button>
-//   </div>`;
-// }
-
-function renderLeftStack() {
-  return `<div class="fab-stack-left">
-    <button class="todaybtn leftbar-btn" data-act="today" title="${t("today")}">${t("today")}</button>
-    <button class="todaybtn leftbar-btn" data-act="agenda" title="Day list">View</button>
-  </div>`;
-}
 
 function renderFabs() {
   return `<div class="fab-stack">
