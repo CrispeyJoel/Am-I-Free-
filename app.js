@@ -120,6 +120,10 @@ let view = "day"; // "day" | "month"
 let monthCursor = startOfMonth(selectedDate);
 let renderedWindowStart = null;
 let currentWindowLength = WINDOW_TOTAL;
+const MONTH_WINDOW_BEFORE = 6;
+const MONTH_WINDOW_TOTAL = 24;
+let renderedMonthWindowStart = null;
+let currentMonthWindowLength = MONTH_WINDOW_TOTAL;
 
 /* ---------- Storage / util ---------- */
 function load(key, fallback) {
@@ -159,6 +163,7 @@ function startOfDay(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
 function startOfWeek(d) { const x = startOfDay(d); const dow = (x.getDay()+6)%7; x.setDate(x.getDate()-dow); return x; } // Monday start
 function startOfMonth(d) { const x = new Date(d); x.setDate(1); x.setHours(0,0,0,0); return x; }
 function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+function addMonths(d, n) { const x = new Date(d); x.setDate(1); x.setMonth(x.getMonth()+n); x.setHours(0,0,0,0); return x; }
 function iso(d) {
   const x = new Date(d);
   return `${x.getFullYear()}-${pad2(x.getMonth()+1)}-${pad2(x.getDate())}`;
@@ -459,6 +464,8 @@ function render() {
   if (view==="day") {
     scrollToDay(selectedDate, false);
     tickNowLine();
+  } else if (view==="month") {
+    scrollToMonthCursor(false);
   }
 }
 
@@ -467,13 +474,13 @@ function renderTopbar() {
     ? monthCursor.toLocaleDateString(undefined, { month: "long", year: "numeric" }) 
     : `${weekStart.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${addDays(weekStart, 6).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
 
-  const toggleLabel = view === "month" ? t("week") : t("month");
-  const toggleTarget = view === "month" ? "day" : "month";
-
   return `
     <div id="topbarWrap">
       <div class="topbar">
-        <button class="todaybtn monthbtn-big" data-view="${toggleTarget}">${toggleLabel}</button>
+        ${view === "month"
+          ? `<div class="todaybtn monthbtn-big" style="visibility:hidden;">${t("month")}</div>`
+          : `<button class="todaybtn monthbtn-big" data-view="month"><span style="margin-right:2px;">‹</span>${t("month")}</button>`
+        }
         <div style="text-align:center">
           <div class="weeklabel">${label}</div>
         </div>
@@ -484,12 +491,6 @@ function renderTopbar() {
           </svg>
         </button>
       </div>
-
-      ${view === "month" ? `
-      <div class="topbar-actions">
-        <button class="iconbtn" data-act="prev">‹</button>
-        <button class="iconbtn" data-act="next">›</button>
-      </div>` : ""}
 
       <div class="synctag ${syncFailed ? "fail" : ""}" id="synctag">${renderSyncTag()}</div>
     </div>
@@ -599,15 +600,15 @@ function renderDayCol(date) {
   </div>`;
 }
 
-function renderMonth() {
-  const first = monthCursor;
-  const gridStart = startOfWeek(first);
+function renderMonthBlock(monthDate) {
+  const gridStart = startOfWeek(monthDate);
   const today = startOfDay(new Date());
+  const monthLabel = monthDate.toLocaleDateString(undefined, { month: "long", year: "numeric" });
   let head = `<div class="monthhead">${DAY_NAMES.slice(1).concat(DAY_NAMES[0]).map(d=>`<span>${d}</span>`).join("")}</div>`;
   let body = `<div class="monthbody">`;
   for (let i=0;i<42;i++) {
     const d = addDays(gridStart,i);
-    const inMonth = d.getMonth()===first.getMonth();
+    const inMonth = d.getMonth()===monthDate.getMonth();
     const evs = eventsOnDate(d);
     const cats = [...new Set(evs.map(e=>e.categoryId))].slice(0,4);
     body += `<button class="monthday ${sameDay(d,today)?"today":""} ${inMonth?"":"other"}" data-goto="${iso(d)}">
@@ -615,7 +616,78 @@ function renderMonth() {
       <span class="dots">${cats.map(c=>`<span style="background:${categoryOf(c).color}"></span>`).join("")}</span>
     </button>`;
   }
-  return `<div class="monthgrid">${head}${body}</div>`;
+  body += `</div>`;
+  return `<div class="monthblock" data-month="${iso(monthDate)}">
+    <div class="monthblock-label">${monthLabel}</div>
+    <div class="monthgrid">${head}${body}</div>
+  </div>`;
+}
+
+function renderMonth() {
+  renderedMonthWindowStart = addMonths(monthCursor, -MONTH_WINDOW_BEFORE);
+  currentMonthWindowLength = MONTH_WINDOW_TOTAL;
+  let html = `<div class="monthscroller" id="monthScroller">`;
+  for (let i=0;i<MONTH_WINDOW_TOTAL;i++) {
+    html += renderMonthBlock(addMonths(renderedMonthWindowStart, i));
+  }
+  return html + `</div>`;
+}
+
+function scrollToMonthCursor(smooth=false) {
+  const scroller = document.getElementById("monthScroller");
+  if (!scroller) return;
+  const targetIso = iso(startOfMonth(monthCursor));
+  const target = scroller.querySelector(`.monthblock[data-month="${targetIso}"]`);
+  if (target) target.scrollIntoView({ block: "start", behavior: smooth ? "smooth" : "auto" });
+}
+
+let monthScrollTimer;
+function onMonthScrollerScroll(e) {
+  clearTimeout(monthScrollTimer);
+  monthScrollTimer = setTimeout(() => {
+    const scroller = e.target;
+    if (!renderedMonthWindowStart) return;
+
+    const blocks = Array.from(scroller.querySelectorAll(".monthblock"));
+    const scrollerTop = scroller.getBoundingClientRect().top;
+    let closestIdx = 0, closestDist = Infinity;
+    blocks.forEach((b, i) => {
+      const dist = Math.abs(b.getBoundingClientRect().top - scrollerTop);
+      if (dist < closestDist) { closestDist = dist; closestIdx = i; }
+    });
+
+    const visibleMonth = startOfMonth(dateFromISO(blocks[closestIdx].dataset.month));
+    if (!sameDay(visibleMonth, startOfMonth(monthCursor))) {
+      monthCursor = visibleMonth;
+      const topbarWrap = document.getElementById("topbarWrap");
+      if (topbarWrap) topbarWrap.outerHTML = renderTopbar();
+    }
+
+    if (closestIdx < EDGE_THRESHOLD) {
+      prependMonths(scroller, 6);
+    } else if (closestIdx > currentMonthWindowLength - EDGE_THRESHOLD - 1) {
+      appendMonths(scroller, 6);
+    }
+  }, 100);
+}
+
+function prependMonths(scroller, count) {
+  let html = "";
+  for (let i = count; i >= 1; i--) html += renderMonthBlock(addMonths(renderedMonthWindowStart, -i));
+  const prevScrollTop = scroller.scrollTop;
+  const prevScrollHeight = scroller.scrollHeight;
+  scroller.insertAdjacentHTML("afterbegin", html);
+  renderedMonthWindowStart = addMonths(renderedMonthWindowStart, -count);
+  currentMonthWindowLength += count;
+  scroller.scrollTop = prevScrollTop + (scroller.scrollHeight - prevScrollHeight);
+}
+
+function appendMonths(scroller, count) {
+  const start = addMonths(renderedMonthWindowStart, currentMonthWindowLength);
+  let html = "";
+  for (let i = 0; i < count; i++) html += renderMonthBlock(addMonths(start, i));
+  scroller.insertAdjacentHTML("beforeend", html);
+  currentMonthWindowLength += count;
 }
 
 function renderLeftStack() {
@@ -967,6 +1039,9 @@ function attachHandlers() {
   const scroller = document.getElementById("scroller");
   if (scroller) scroller.addEventListener("scroll", onScrollerScroll);
   attachDayPipsSwipe();
+
+  const monthScroller = document.getElementById("monthScroller");
+  if (monthScroller) monthScroller.addEventListener("scroll", onMonthScrollerScroll);
 
   document.querySelectorAll(".daycol[data-date]").forEach((el) => {
     if (view === "day") {

@@ -322,6 +322,25 @@ button {
   z-index: 35;
 }
 
+.monthscroller {
+  flex: 1;
+  overflow-y: auto;
+  scroll-snap-type: y proximity;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 100px;
+}
+
+.monthblock {
+  scroll-snap-align: start;
+  padding-top: 6px;
+}
+
+.monthblock-label {
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 0 16px 8px;
+}
+
 /* =========================================================
    DAY PIPS
    ========================================================= */
