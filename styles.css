@@ -93,6 +93,7 @@ button {
   flex: 1;
   display: flex;
   align-items: center;
+  gap: 12px;
 }
 
 .topbar-side-left {
