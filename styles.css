@@ -330,7 +330,7 @@ button {
 }
 
 .todaybtn.monthbtn-big {
-  background: var(--grey);
+  background: var(--bg);
   color: white;
   border-color: #16232a;
 }
@@ -353,7 +353,7 @@ button {
 
 .today-view-row .todaybtn {
   flex: 1;
-  background: var(--grey);
+  background: var(--bg);
 }
 
 .todaybtn.leftbar-btn {
