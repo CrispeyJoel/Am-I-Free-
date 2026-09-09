@@ -190,6 +190,16 @@ function formatSyncTime(ts) {
   if (!ts) return "";
   return new Date(ts).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
+
+function formatDateReadable(dateISO) {
+  const d = dateFromISO(dateISO);
+  const today = startOfDay(new Date());
+  const diff = dayDiff(d, today);
+  if (diff === 0) return "today";
+  if (diff === 1) return "tomorrow";
+  if (diff === -1) return "yesterday";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 function refreshSyncTag() {
   const tag = document.getElementById("synctag");
   if (tag) {
@@ -1410,7 +1420,7 @@ function executeChatAction(action) {
 
     events.push(draft);
     save(); render();
-    return `Added "${draft.title}" on ${draft.dateISO}${draft.allDay ? "" : ` at ${minToLabel(draft.start)}`}.`;
+    return `Added ${draft.title} — ${formatDateReadable(draft.dateISO)}${draft.allDay ? "" : `, ${minToLabel(draft.start)}`}.`;
   }
 
   if (action.name === "deleteEvent") {
@@ -1439,7 +1449,7 @@ function executeChatAction(action) {
     const updated = { ...match.ev, dateISO: newDateISO, start: newStart };
     events = events.map(e => e.id === updated.id ? updated : e);
     save(); render();
-    return `Moved "${updated.title}" to ${newDateISO} ${minToLabel(newStart)}.`;
+    return `Moved ${updated.title} to ${formatDateReadable(newDateISO)}, ${minToLabel(newStart)}.`;
   }
   if (action.name === "editEvent") {
     const match = findMatchingEvent(args.matchTitle, args.matchDate, args.matchTime);
@@ -1459,6 +1469,7 @@ function executeChatAction(action) {
     if (typeof args.mandatory === "boolean") updates.mandatory = args.mandatory;
     if (typeof args.earnsMoney === "boolean") updates.earnsMoney = args.earnsMoney;
     if (typeof args.reminder === "string" && args.reminder) updates.reminder = args.reminder;
+    if (Number.isFinite(args.duration)) updates.duration = Math.max(5, args.duration);
 
     if (Object.keys(updates).length === 0) return `Not sure what to change about ${match.ev.title}.`;
 
@@ -1993,7 +2004,7 @@ function openDeleteChoice(draft, parentOverlay, targetDateISO) {
       <p style="font-size:0.88rem; color:var(--ink-soft); margin:0 0 16px;">${t("deleteRepeatingDesc")}</p>
       <div style="display:flex; flex-direction:column; gap:10px;">
         <button class="btn ghost" id="delCancel">${t("cancelDelete")}</button>
-        <button class="btn ghost" id="delOne">${t("deleteJustThis")} (${targetDateISO})</button>
+        <button class="btn ghost" id="delOne">${t("deleteJustThis")} (${formatDateReadable(targetDateISO)})</button>
         <button class="btn" id="delAll" style="background:var(--danger); color:white;">${t("deleteAllFuture")}</button>
       </div>
     </div>
