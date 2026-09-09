@@ -1651,9 +1651,9 @@ function openEditChoice(originalDraft, updated, parentOverlay, occurrenceDateISO
       <h2>Save changes to this repeating event</h2>
       <p style="font-size:0.88rem; color:var(--ink-soft); margin:0 0 16px;">This event repeats. What would you like to do?</p>
       <div style="display:flex; flex-direction:column; gap:10px;">
-        <button class="btn ghost" id="editCancel">Cancel — don't save</button>
-        <button class="btn ghost" id="editOne">Save just this date (${occurrenceDateISO})</button>
-        <button class="btn" id="editAll" style="background:var(--danger); color:white;">Save this and all future dates</button>
+        <button class="btn ghost" id="editCancel">Cancel</button>
+        <button class="btn ghost" id="editOne">Edit just this date (${occurrenceDateISO})</button>
+        <button class="btn" id="editAll" style="background:var(--danger); color:white;">Edit this and all future dates</button>
       </div>
     </div>
   `;

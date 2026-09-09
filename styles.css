@@ -121,17 +121,18 @@ button {
 .undo-snackbar {
   position: fixed;
   left: 16px;
-  right: 16px;
-  bottom: calc(60px + env(safe-area-inset-bottom));
+  right: 90px;
+  max-width: 340px;
+  bottom: calc(90px + env(safe-area-inset-bottom));
   background: #16232a;
   color: white;
-  padding: 16px 18px;
+  padding: 14px 16px;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  font-size: 0.95rem;
+  gap: 14px;
+  font-size: 0.9rem;
   box-shadow: 0 4px 14px rgba(0,0,0,0.3);
   z-index: 45;
 }
