@@ -464,11 +464,11 @@ function renderTopbar() {
 
       <div class="topbar-actions">
         <button class="todaybtn" data-act="today" title="${t("today")}">${t("today")}</button>
-        <button class="iconbtn" data-act="agenda" title="Day list">≡</button>
         <div class="viewtoggle">
           <button data-view="day" class="${view === "day" ? "active" : ""}">${t("week")}</button>
           <button data-view="month" class="${view === "month" ? "active" : ""}">${t("month")}</button>
         </div>
+        <button class="iconbtn" data-act="agenda" title="Day list">≡</button>
       </div>
 
       <div class="synctag ${syncFailed ? "fail" : ""}" id="synctag">${renderSyncTag()}</div>
@@ -605,7 +605,7 @@ function renderQuickBar() {
       <span id="aiStatusDot" class="ai-status-dot ${aiStatus}"></span>
     </button>
     <button id="addbtn" type="button" class="addbtn-main" title="${t("add")}" aria-label="${t("add")}">+</button>
-    <button class="iconbtn" data-act="settings" title="${t("settings")}">⚙</button>
+        <button class="todaybtn" data-act="settings" title="${t("settings")}">${t("settings")}</button>
   </div>`;
 }
 

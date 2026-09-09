@@ -690,11 +690,11 @@ button {
   margin: 0 auto;
   background: var(--surface);
   border-top: 1px solid var(--line);
-  padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: space-evenly;
+  gap: 16px;
   z-index: 30;
 }
 
@@ -702,7 +702,7 @@ button {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: var(--accent);
+  background: #16232a;
   color: white;
   font-size: 1.8rem;
   font-weight: 700;
@@ -1077,7 +1077,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 12px;
+  padding: 0 16px 10px;
   gap: 8px;
 }
 
