@@ -221,31 +221,27 @@ button {
 
 .undo-snackbar {
   position: fixed;
-  left: 16px;
   right: 90px;
-  max-width: 340px;
   bottom: calc(90px + env(safe-area-inset-bottom));
   background: #16232a;
   color: white;
-  padding: 14px 16px;
-  border-radius: 12px;
+  padding: 10px 16px;
+  border-radius: 999px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  gap: 8px;
   font-size: 0.9rem;
+  font-weight: 600;
   box-shadow: 0 4px 14px rgba(0,0,0,0.3);
   z-index: 45;
 }
-
 .undo-snackbar #undoBtn {
   background: none;
   border: none;
   color: #7fd7ff;
-  font-weight: 700;
-  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
   padding: 0;
-  flex-shrink: 0;
 }
 
 .topbar-side-right {

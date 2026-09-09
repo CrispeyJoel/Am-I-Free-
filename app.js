@@ -2007,7 +2007,13 @@ function showUndoSnackbar(message, restoreFn) {
   const bar = document.createElement("div");
   bar.id = "undoSnackbar";
   bar.className = "undo-snackbar";
-  bar.innerHTML = `<span>${escapeHtml(message)}</span><button type="button" id="undoBtn">Undo</button>`;
+  bar.innerHTML = `<button type="button" id="undoBtn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 7v6h6"/>
+      <path d="M21 17a9 9 0 0 0-15-6.7L3 13"/>
+    </svg>
+    <span>Undo</span>
+  </button>`;
   document.body.appendChild(bar);
   bar.querySelector("#undoBtn").addEventListener("click", () => {
     clearTimeout(undoTimer);
