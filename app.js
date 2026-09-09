@@ -1130,13 +1130,6 @@ function settingsPanelContent() {
       </button>
     </div>
 
-        <div class="settings-section">
-      <h3>Theme</h3>
-      <button class="settings-btn ${currentTheme === "dark" ? "active" : ""}" id="settingsThemeBtn">
-        <span>${currentTheme === "dark" ? "Dark mode: On" : "Dark mode: Off"}</span>
-      </button>
-    </div>
-
     <div class="settings-section">
       <h3>Theme</h3>
       <button class="settings-btn ${currentTheme === "dark" ? "active" : ""}" id="settingsThemeBtn">

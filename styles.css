@@ -307,12 +307,10 @@ button {
 }
 
 .todaybtn.monthbtn-big {
-  font-size: 1.05rem;
-  font-weight: 700;
-  padding: 0 20px;
-  height: 46px;
+  background: #16232a;
+  color: white;
+  border-color: #16232a;
 }
-
 .fab-stack-left {
   position: fixed;
   left: 12px;
