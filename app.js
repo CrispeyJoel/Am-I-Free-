@@ -1056,20 +1056,12 @@ function settingsPanelContent() {
     </div>
 
     <div class="settings-section">
-      <h3>${t("backup")}</h3>
-      <button class="settings-btn" id="settingsExportBtn">
-        <span>${t("exportBackup")}</span>
-      </button>
-      <button class="settings-btn" id="settingsImportBtn">
-        <span>${t("importBackup")}</span>
-      </button>
-      <input type="file" id="settingsImportFile" accept="application/json" style="display:none;" />
-    </div>
-
-    <div class="settings-section">
-      <h3>Help</h3>
-      <button class="settings-btn" id="settingsHelpBtn">
-        <span>How to use this app</span>
+      <h3>${t("cloudAccount")}</h3>
+      <div id="cloudstatus" class="cloudstatus" style="text-align:left; padding:0 0 10px;">
+        ${currentUser ? `Synced as ${currentUser.displayName || currentUser.email}${lastSyncedAt ? ` · last saved ${formatSyncTime(lastSyncedAt)}` : ""}` : "Sign in to back up your calendar and enable notifications"}
+      </div>
+      <button class="settings-btn" id="settingsAuthBtn">
+        <span>${currentUser ? t("signOut") : t("signIn")}</span>
         <span>›</span>
       </button>
     </div>
@@ -1100,6 +1092,14 @@ function settingsPanelContent() {
         <span>${t("importBackup")}</span>
       </button>
       <input type="file" id="settingsImportFile" accept="application/json" style="display:none;" />
+    </div>
+
+    <div class="settings-section">
+      <h3>Help</h3>
+      <button class="settings-btn" id="settingsHelpBtn">
+        <span>How to use this app</span>
+        <span>›</span>
+      </button>
     </div>
   `;
 }
