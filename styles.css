@@ -347,14 +347,14 @@ button {
 .fab-stack-left {
   position: fixed;
   left: 0;
-  bottom: calc(8px + env(safe-area-inset-bottom));
+  bottom: 0;
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 10px;
   z-index: 35;
   background: var(--surface);
-  padding: 10px 24px 10px 16px;
+  padding: 10px 24px calc(10px + env(safe-area-inset-bottom)) 16px;
   border-radius: 0 999px 999px 0;
   box-shadow: 0 4px 14px rgba(0,0,0,0.15);
 }
