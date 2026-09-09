@@ -464,6 +464,7 @@ function renderTopbar() {
 
       <div class="topbar-actions">
         <button class="todaybtn" data-act="today" title="${t("today")}">${t("today")}</button>
+        <button class="iconbtn" data-act="agenda" title="Day list">≡</button>
         <div class="viewtoggle">
           <button data-view="day" class="${view === "day" ? "active" : ""}">${t("week")}</button>
           <button data-view="month" class="${view === "month" ? "active" : ""}">${t("month")}</button>
@@ -569,17 +570,9 @@ function renderDayCol(date) {
       }).join("")}</div>`
     : "";
 
-  const nominalHeight = ((DAY_END_MIN-DAY_START_MIN)/60+1)*HOUR_PX;
-  let maxBottom = nominalHeight;
-  for (const ev of timedEvs) {
-    const bottom = (ev.start + ev.duration + ev.bufferAfter - DAY_START_MIN) / 60 * HOUR_PX;
-    if (bottom > maxBottom) maxBottom = bottom;
-  }
-  const timelineHeight = maxBottom + 20;
-
   return `<div class="daycol" data-date="${iso(date)}">
     ${alldayHtml}
-    <div class="timeline" style="height:${timelineHeight}px">
+    <div class="timeline" style="height:${((DAY_END_MIN-DAY_START_MIN)/60+1)*HOUR_PX}px">
       ${hours}
       <div class="eventlayer">${blocks}</div>
       ${nowLine}
@@ -943,6 +936,7 @@ function setupDelegatedHandlers() {
       else if (act === "prev") { view === "month" ? shiftMonth(-1) : shiftWeek(-1); }
       else if (act === "next") { view === "month" ? shiftMonth(1) : shiftWeek(1); }
       else if (act === "settings") { openSettingsPanel(); }
+      else if (act === "agenda") { openDayAgenda(selectedDate); }
       return;
     }
 
@@ -1325,6 +1319,77 @@ function openCategoryManager(onDone) {
   });
 }
 
+function openDayAgenda(date) {
+  const dStr = iso(date);
+  const evs = eventsOnDate(date).sort((a, b) => {
+    if (a.allDay && !b.allDay) return -1;
+    if (!a.allDay && b.allDay) return 1;
+    return a.start - b.start;
+  });
+
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+  overlay.id = "agendaOverlay";
+
+  const rowsHtml = () => evs.length
+    ? evs.map(ev => {
+        const cat = categoryOf(ev.categoryId);
+        const timeLabel = ev.allDay
+          ? (ev.endDateISO && ev.endDateISO !== ev.dateISO ? `${ev.dateISO} – ${ev.endDateISO}` : t("allDay"))
+          : `${minToLabel(ev.start)} – ${minToLabel(ev.start + ev.duration)}`;
+        return `<div class="agenda-row" data-id="${ev.id}">
+          <span class="agenda-dot" style="background:${cat.color}"></span>
+          <div class="agenda-info">
+            <div class="agenda-title">${escapeHtml(ev.title)}</div>
+            <div class="agenda-time">${timeLabel} · ${cat.name}</div>
+          </div>
+          <button type="button" class="agenda-delete" data-id="${ev.id}" title="Delete">✕</button>
+        </div>`;
+      }).join("")
+    : `<div style="padding:20px 0; text-align:center; color:var(--ink-soft); font-size:0.85rem;">No events on this day.</div>`;
+
+  overlay.innerHTML = `
+    <div class="sheet">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h2 style="margin:0;">${date.toLocaleDateString(undefined,{weekday:"long", month:"short", day:"numeric"})}</h2>
+        <button id="agendaClose" style="border:none; background:none; font-size:1.3rem; line-height:1; color:var(--ink-soft); padding:4px;">×</button>
+      </div>
+      <div id="agendaList">${rowsHtml()}</div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector("#agendaClose").addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+
+  function attachRowHandlers() {
+    overlay.querySelectorAll(".agenda-delete").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const ev = events.find(x => x.id === btn.dataset.id);
+        if (!ev) return;
+        if (getRecurrenceDays(ev) > 0) {
+          openDeleteChoice(ev, overlay, dStr);
+        } else {
+          if (!confirm(`Delete "${ev.title}"?`)) return;
+          events = events.filter(x => x.id !== ev.id);
+          save();
+          overlay.remove();
+          render();
+        }
+      });
+    });
+
+    overlay.querySelectorAll(".agenda-row").forEach(row => {
+      row.addEventListener("click", () => {
+        const ev = events.find(x => x.id === row.dataset.id);
+        if (ev) { overlay.remove(); openSheet(ev, false, dStr); }
+      });
+    });
+  }
+  attachRowHandlers();
+}
+
 function openDeleteChoice(draft, parentOverlay, targetDateISO) {
   const overlay = document.createElement("div");
   overlay.className = "overlay";
@@ -1518,12 +1583,8 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       const [ehh,emm] = overlay.querySelector("#f-endtime").value.split(":").map(Number);
       startMin = hh*60+mm;
       let endMin = ehh*60+emm;
-      if (endMin <= startMin) {
-        const crossesMidnight = confirm("End time is before start time — does this event go past midnight into the next day? Cancel if that's a mistake.");
-        if (!crossesMidnight) { endMin = startMin + 30; }
-        else { endMin += 24*60; }
-      }
-      duration = Math.max(5, Math.min(endMin - startMin, 18*60)); // hard cap at 18h, sanity limit
+      if (endMin <= startMin) endMin += 24*60; // crosses midnight
+      duration = Math.max(5, endMin - startMin);
       bufferBefore = parseInt(overlay.querySelector("#f-bufbefore").value,10) || 0;
       bufferAfter = parseInt(overlay.querySelector("#f-bufafter").value,10) || 0;
     } else {
