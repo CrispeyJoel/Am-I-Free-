@@ -769,7 +769,20 @@ function animateWeekPipsTransition(direction) {
     shiftWeek(direction);
 
     const newPips = document.querySelector(".daypips");
-    if
+    if (!newPips) return;
+    newPips.style.transition = "none";
+    newPips.style.transform = `translateX(${direction < 0 ? "-40px" : "40px"})`;
+    newPips.style.opacity = "0";
+
+    requestAnimationFrame(() => {
+      newPips.style.transition = "transform 160ms ease-out, opacity 160ms ease-out";
+      newPips.style.transform = "translateX(0)";
+      newPips.style.opacity = "1";
+    });
+  }, 140);
+}
+
+const EDGE_THRESHOLD = 3;   // start extending when within this many columns of an edge
 
 const EDGE_THRESHOLD = 3;   // start extending when within this many columns of an edge
 const EXTEND_BY = 7;        // how many days to add each time we extend
