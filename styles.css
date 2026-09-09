@@ -283,6 +283,14 @@ button {
   right: -2px;
 }
 
+.daypips {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 16px 6px;
+  gap: 4px;
+  touch-action: pan-y;
+}
+
 /* =========================================================
    DAY PIPS
    ========================================================= */

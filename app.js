@@ -452,22 +452,24 @@ function renderTopbar() {
     ? monthCursor.toLocaleDateString(undefined, { month: "long", year: "numeric" }) 
     : `${weekStart.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${addDays(weekStart, 6).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
 
+  const toggleLabel = view === "month" ? t("week") : t("month");
+  const toggleTarget = view === "month" ? "day" : "month";
+
   return `
     <div id="topbarWrap">
       <div class="topbar">
-        <button class="iconbtn" data-act="prev">‹</button>
+        <button class="todaybtn" data-view="${toggleTarget}">${toggleLabel}</button>
         <div style="text-align:center">
           <div class="weeklabel">${label}</div>
         </div>
-        <button class="iconbtn" data-act="next">›</button>
+        <button class="todaybtn" data-act="today" title="${t("today")}">${t("today")}</button>
       </div>
 
       <div class="topbar-actions">
-        <button class="todaybtn" data-act="today" title="${t("today")}">${t("today")}</button>
-        <div class="viewtoggle">
-          <button data-view="day" class="${view === "day" ? "active" : ""}">${t("week")}</button>
-          <button data-view="month" class="${view === "month" ? "active" : ""}">${t("month")}</button>
-        </div>
+        ${view === "month" ? `
+          <button class="iconbtn" data-act="prev">‹</button>
+          <button class="iconbtn" data-act="next">›</button>
+        ` : ""}
         <button class="todaybtn" data-act="agenda" title="Day list">View</button>
         <button class="iconbtn" data-act="settings" title="${t("settings")}">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -628,6 +630,31 @@ function scrollToDay(date, smooth=true) {
   if (!scroller || !renderedWindowStart) return;
   const idx = dayDiff(date, renderedWindowStart);
   scroller.scrollTo({ left: idx*scroller.clientWidth, behavior: smooth?"smooth":"auto" });
+}
+
+function attachDayPipsSwipe() {
+  const pips = document.querySelector(".daypips");
+  if (!pips) return;
+  let startX = null, startY = null;
+
+  pips.addEventListener("touchstart", (e) => {
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+  }, { passive: true });
+
+  pips.addEventListener("touchend", (e) => {
+    if (startX === null) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - startX;
+    const dy = touch.clientY - startY;
+    startX = null; startY = null;
+
+    // Require a clearly horizontal, deliberate swipe — ignores taps and vertical drift
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+
+    if (dx < 0) shiftWeek(1); else shiftWeek(-1);
+  });
 }
 
 const EDGE_THRESHOLD = 3;   // start extending when within this many columns of an edge
@@ -920,6 +947,7 @@ function startVoiceInput() {
 function attachHandlers() {
   const scroller = document.getElementById("scroller");
   if (scroller) scroller.addEventListener("scroll", onScrollerScroll);
+  attachDayPipsSwipe();
 
   document.querySelectorAll(".daycol[data-date]").forEach((el) => {
     if (view === "day") {
