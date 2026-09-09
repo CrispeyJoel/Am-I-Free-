@@ -468,7 +468,7 @@ function renderTopbar() {
           <button data-view="day" class="${view === "day" ? "active" : ""}">${t("week")}</button>
           <button data-view="month" class="${view === "month" ? "active" : ""}">${t("month")}</button>
         </div>
-        <button class="iconbtn" data-act="agenda" title="Day list">≡</button>
+                <button class="todaybtn" data-act="agenda" title="Day list">View</button>
       </div>
 
       <div class="synctag ${syncFailed ? "fail" : ""}" id="synctag">${renderSyncTag()}</div>
