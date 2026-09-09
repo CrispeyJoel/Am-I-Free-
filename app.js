@@ -750,15 +750,26 @@ function attachDayPipsSwipe() {
     const dy = touch.clientY - startY;
     startX = null; startY = null;
 
-    // Require a clearly horizontal, deliberate swipe — ignores taps and vertical drift
     if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
 
     const direction = dx < 0 ? 1 : -1;
-    const target = addDays(selectedDate, 7 * direction);
-    selectedDate = target;
-    scrollToDay(target, true); // smooth — same mechanism single-day swipes already use
+    animateWeekPipsTransition(direction);
   });
 }
+
+function animateWeekPipsTransition(direction) {
+  const pips = document.querySelector(".daypips");
+  if (!pips) { shiftWeek(direction); return; }
+
+  pips.style.transition = "transform 140ms ease-in, opacity 140ms ease-in";
+  pips.style.transform = `translateX(${direction < 0 ? "40px" : "-40px"})`;
+  pips.style.opacity = "0";
+
+  setTimeout(() => {
+    shiftWeek(direction);
+
+    const newPips = document.querySelector(".daypips");
+    if
 
 const EDGE_THRESHOLD = 3;   // start extending when within this many columns of an edge
 const EXTEND_BY = 7;        // how many days to add each time we extend
