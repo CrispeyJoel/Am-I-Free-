@@ -56,6 +56,20 @@ let unsubscribeUserDoc = null;
 let lastSyncedAt = null;
 let syncFailed = false;
 let currentLang = localStorage.getItem("af_lang") || "en";
+let currentTheme = localStorage.getItem("af_theme") || "light";
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+}
+
+function setTheme(theme) {
+  currentTheme = theme;
+  localStorage.setItem("af_theme", theme);
+  applyTheme(theme);
+  refreshSettingsPanel();
+}
+
+applyTheme(currentTheme);
 
 function t(key) {
   return (STRINGS[currentLang] && STRINGS[currentLang][key]) || STRINGS.en[key] || key;
@@ -1116,6 +1130,20 @@ function settingsPanelContent() {
       </button>
     </div>
 
+        <div class="settings-section">
+      <h3>Theme</h3>
+      <button class="settings-btn ${currentTheme === "dark" ? "active" : ""}" id="settingsThemeBtn">
+        <span>${currentTheme === "dark" ? "Dark mode: On" : "Dark mode: Off"}</span>
+      </button>
+    </div>
+
+    <div class="settings-section">
+      <h3>Theme</h3>
+      <button class="settings-btn ${currentTheme === "dark" ? "active" : ""}" id="settingsThemeBtn">
+        <span>${currentTheme === "dark" ? "Dark mode: On" : "Dark mode: Off"}</span>
+      </button>
+    </div>
+
     <div class="settings-section">
       <h3>${t("language")}</h3>
       <select id="settingsLangSelect" style="width:100%; min-height:44px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--ink); font-size:16px;">
@@ -1195,6 +1223,9 @@ function wireSettingsPanel(panel) {
   });
 
   panel.querySelector("#settingsPushBtn").addEventListener("click", () => toggleNotifications());
+    panel.querySelector("#settingsThemeBtn").addEventListener("click", () => {
+    setTheme(currentTheme === "dark" ? "light" : "dark");
+  });
 
   panel.querySelector("#settingsLangSelect").addEventListener("change", (e) => setLang(e.target.value));
   panel.querySelector("#settingsHelpBtn").addEventListener("click", openHelpSheet);

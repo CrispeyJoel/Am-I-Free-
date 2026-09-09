@@ -22,6 +22,21 @@
   box-sizing: border-box;
 }
 
+[data-theme="dark"] {
+  --bg: #15181a;
+  --surface: #1f2426;
+  --ink: #eceeef;
+  --ink-soft: #9aa3a7;
+  --line: #333a3d;
+  --accent: #4a6b78;
+  --accent-warm: #E4A94F;
+  --gray-event: #3a4144;
+  --danger: #d97060;
+  --free-bg: #16321f;
+  --free-ink: #a9e8bc;
+  --free-dot: #5FAF72;
+}
+
 html, body {
   margin: 0;
   height: 100%;
@@ -291,7 +306,7 @@ button {
   touch-action: pan-y;
 }
 
-.monthbtn-big {
+.todaybtn.monthbtn-big {
   font-size: 1.05rem;
   font-weight: 700;
   padding: 0 20px;
