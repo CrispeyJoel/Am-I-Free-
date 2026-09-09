@@ -345,15 +345,14 @@ button {
   z-index: 35;
 } */
 
-.today-view-row {
-  display: flex;
-  gap: 8px;
-  padding: 0 16px 10px;
-}
-
-.today-view-row .todaybtn {
-  flex: 1;
-  background: var(--surface);
+.today-corner {
+  position: fixed;
+  left: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 35;
+  height: 44px;
+  padding: 0 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .todaybtn.leftbar-btn {

@@ -456,8 +456,9 @@ const app = document.getElementById("app");
 function render() {
   app.innerHTML = `
     ${renderTopbar()}
-    ${view==="day" ? renderFreeBanner()+renderTodayViewRow()+renderDayPips()+renderScroller() : renderMonth()}
+    ${view==="day" ? renderFreeBanner()+renderDayPips()+renderScroller() : renderMonth()}
     ${renderFabs()}
+    ${renderTodayCorner()}
   `;
   attachHandlers();
   if (view==="day") {
@@ -484,6 +485,16 @@ function renderTopbar() {
         </div>
         <div class="weeklabel">${label}</div>
         <div class="topbar-side topbar-side-right">
+          <button class="iconbtn" data-act="agenda" title="Day list">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="8" y1="6" x2="21" y2="6"/>
+              <line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/>
+              <line x1="3" y1="12" x2="3.01" y2="12"/>
+              <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+          </button>
           <button class="iconbtn" data-act="settings" title="${t("settings")}">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"/>
@@ -504,11 +515,8 @@ function renderSyncTag() {
   return lastSyncedAt ? `${t("syncedAt")} ${formatSyncTime(lastSyncedAt)}` : t("signedIn");
 }
 
-function renderTodayViewRow() {
-  return `<div class="today-view-row">
-    <button class="todaybtn" data-act="today" title="${t("today")}">${t("today")}</button>
-    <button class="todaybtn" data-act="agenda" title="Day list">View</button>
-  </div>`;
+function renderTodayCorner() {
+  return `<button class="todaybtn today-corner" data-act="today" title="${t("today")}">${t("today")}</button>`;
 }
 
 function renderFreeBanner() {
