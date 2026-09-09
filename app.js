@@ -782,7 +782,6 @@ function animateWeekPipsTransition(direction) {
   }, 140);
 }
 
-const EDGE_THRESHOLD = 3;   // start extending when within this many columns of an edge
 
 const EDGE_THRESHOLD = 3;   // start extending when within this many columns of an edge
 const EXTEND_BY = 7;        // how many days to add each time we extend
