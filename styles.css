@@ -685,27 +685,36 @@ button {
 
 .quickbar {
   position: fixed;
-
-  bottom: 0;
-  left: 0;
-  right: 0;
-
+  bottom: 0; left: 0; right: 0;
   max-width: 480px;
-
   margin: 0 auto;
-
   background: var(--surface);
-
   border-top: 1px solid var(--line);
-
-  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-
+  padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
   display: flex;
-
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-
   z-index: 30;
 }
+
+.addbtn-main {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  font-size: 1.8rem;
+  font-weight: 700;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  flex-shrink: 0;
+  line-height: 1;
+}
+.addbtn-main:active { transform: scale(0.94); }
 
 .quickbar input {
   flex: 1;

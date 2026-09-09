@@ -469,7 +469,6 @@ function renderTopbar() {
           <button data-view="day" class="${view === "day" ? "active" : ""}">${t("week")}</button>
           <button data-view="month" class="${view === "month" ? "active" : ""}">${t("month")}</button>
         </div>
-        <button class="todaybtn" data-act="settings" title="${t("settings")}">${t("settings")}</button>
       </div>
 
       <div class="synctag ${syncFailed ? "fail" : ""}" id="synctag">${renderSyncTag()}</div>
@@ -605,8 +604,8 @@ function renderQuickBar() {
       <span id="voiceLabel">${t("voice")}</span>
       <span id="aiStatusDot" class="ai-status-dot ${aiStatus}"></span>
     </button>
-    <input id="quickinput" type="text" placeholder="${t("quickAddPlaceholder")}" autocomplete="off" />
-    <button id="quickadd" type="button" title="${t("add")}" aria-label="${t("add")}">+</button>
+    <button id="addbtn" type="button" class="addbtn-main" title="${t("add")}" aria-label="${t("add")}">+</button>
+    <button class="iconbtn" data-act="settings" title="${t("settings")}">⚙</button>
   </div>`;
 }
 
@@ -876,16 +875,8 @@ function startVoiceInput() {
     }
 
   voiceRecognition.onresult = (event) => {
-    const transcript =
-      event.results[0][0].transcript.trim();
-
-    const input = document.getElementById("quickinput");
-
-    if (input) {
-      input.value = transcript;
-    }
-
-    submitQuickAdd();
+    const transcript = event.results[0][0].transcript.trim();
+    processVoiceText(transcript);
   };
 
   voiceRecognition.onerror = (event) => {
@@ -965,23 +956,40 @@ function setupDelegatedHandlers() {
       return;
     }
 
-    if (e.target.closest("#quickadd")) { submitQuickAdd(); return; }
+    if (e.target.closest("#addbtn")) { openSheet(null, true); return; }
     if (e.target.closest("#voicebtn")) { startVoiceInput(); return; }
-  });
-
-  app.addEventListener("keydown", (e) => {
-    if (e.target && e.target.id === "quickinput" && e.key === "Enter") submitQuickAdd();
   });
 }
 
-async function submitQuickAdd() {
-  const qi = document.getElementById("quickinput");
-  if (!qi || !qi.value.trim()) return;
-  const text = qi.value.trim();
+// async function submitQuickAdd() {
+//   const qi = document.getElementById("quickinput");
+//   if (!qi || !qi.value.trim()) return;
+//   const text = qi.value.trim();
 
-  const qa = document.getElementById("quickadd");
-  const originalLabel = qa ? qa.textContent : null;
-  if (qa) { qa.disabled = true; qa.textContent = "…"; }
+//   const qa = document.getElementById("quickadd");
+//   const originalLabel = qa ? qa.textContent : null;
+//   if (qa) { qa.disabled = true; qa.textContent = "…"; }
+
+//   let draft;
+//   try {
+//     draft = await parseQuickAddAI(text);
+//     setAiStatus("good");
+//   } catch (e) {
+//     console.warn("AI parse unavailable, falling back to local parsing:", e.message);
+//     setAiStatus("busy");
+//     draft = parseQuickAdd(text);
+//   }
+
+//   if (qa) { qa.disabled = false; qa.textContent = originalLabel; }
+//   openSheet(draft, true);
+// }
+
+async function processVoiceText(text) {
+  if (!text || !text.trim()) return;
+
+  const label = document.getElementById("voiceLabel");
+  const originalLabel = label ? label.textContent : null;
+  if (label) label.textContent = "…";
 
   let draft;
   try {
@@ -993,7 +1001,7 @@ async function submitQuickAdd() {
     draft = parseQuickAdd(text);
   }
 
-  if (qa) { qa.disabled = false; qa.textContent = originalLabel; }
+  if (label) label.textContent = originalLabel || t("voice");
   openSheet(draft, true);
 }
 
@@ -1619,7 +1627,7 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
     weekStart = startOfWeek(selectedDate);
     view = "day";
     render();
-    const qi = document.getElementById("quickinput"); if (qi) qi.value = "";
+    // const qi = document.getElementById("quickinput"); if (qi) qi.value = "";
   });
 }
 
