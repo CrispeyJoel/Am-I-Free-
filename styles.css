@@ -9,6 +9,7 @@
   --accent-warm: #E4A94F;
   --gray-event: #C7CBC6;
   --danger: #B5563C;
+  --grey: #635f5f;
 
   /* Free status */
   --free-bg: #DDEFE2;
@@ -352,7 +353,7 @@ button {
 
 .today-view-row .todaybtn {
   flex: 1;
-  background: var(--bg);
+  background: var(--grey);
 }
 
 .todaybtn.leftbar-btn {
@@ -790,7 +791,7 @@ button {
 
   font-size: 0.8rem;
 
-  color: var(--ink);
+  color: var(--grey);
 
   gap: 4px;
 
