@@ -1132,7 +1132,11 @@ function setupDelegatedHandlers() {
     }
 
     if (e.target.closest("#addbtn")) { openSheet(null, true); return; }
-    if (e.target.closest("#voicebtn")) { startVoiceInput(); return; }
+    if (e.target.closest("#voicebtn")) {
+      if (!chatOpen) openChatPanel();
+      startChatVoiceInput();
+      return;
+    }
   });
 }
 
@@ -1177,6 +1181,210 @@ async function processVoiceText(text) {
 
   if (btn) btn.classList.remove("thinking");
   openSheet(draft, true);
+}
+
+let chatOpen = false;
+let chatMessages = [];
+let chatSending = false;
+
+function openChatPanel() {
+  chatOpen = true;
+  renderChatPanel();
+}
+
+function closeChatPanel() {
+  chatOpen = false;
+  const el = document.getElementById("chatPanel");
+  if (el) el.remove();
+}
+
+function renderChatPanel() {
+  let el = document.getElementById("chatPanel");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "chatPanel";
+    el.className = "chat-panel";
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `
+    <div class="chat-header">
+      <span>AI Assistant</span>
+      <button id="chatClose" type="button">×</button>
+    </div>
+    <div class="chat-messages" id="chatMessagesList">
+      ${chatMessages.length === 0 ? `<div class="chat-hint">Try: "What's free next Tuesday?" or "Schedule piano Thursday 4pm"</div>` : ""}
+      ${chatMessages.map(m => `<div class="chat-bubble ${m.role}">${escapeHtml(m.text)}</div>`).join("")}
+      ${chatSending ? `<div class="chat-bubble model chat-typing"><span></span><span></span><span></span></div>` : ""}
+    </div>
+    <div class="chat-inputrow">
+      <button id="chatMic" type="button" class="chat-mic-btn" title="${t("voice")}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </button>
+      <input id="chatInput" type="text" placeholder="Ask or tell me anything..." autocomplete="off" />
+      <button id="chatSend" type="button">➤</button>
+    </div>
+  `;
+  el.querySelector("#chatClose").addEventListener("click", closeChatPanel);
+  el.querySelector("#chatSend").addEventListener("click", sendChatFromInput);
+  el.querySelector("#chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChatFromInput(); });
+  el.querySelector("#chatMic").addEventListener("click", startChatVoiceInput);
+
+  const list = el.querySelector("#chatMessagesList");
+  list.scrollTop = list.scrollHeight;
+}
+
+function sendChatFromInput() {
+  const input = document.getElementById("chatInput");
+  if (!input || !input.value.trim()) return;
+  const text = input.value.trim();
+  input.value = "";
+  sendChatMessage(text);
+}
+
+function startChatVoiceInput() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { alert("Voice input isn't supported on this browser."); return; }
+  const recog = new SpeechRecognition();
+  recog.lang = VOICE_LOCALE[currentLang] || "en-AU";
+  recog.continuous = false;
+  recog.interimResults = false;
+  recog.maxAlternatives = 1;
+
+  const micBtn = document.getElementById("chatMic");
+  if (micBtn) micBtn.classList.add("recording");
+
+  recog.onresult = (event) => {
+    const transcript = event.results[0][0].transcript.trim();
+    sendChatMessage(transcript);
+  };
+  recog.onerror = (event) => {
+    if (event.error === "not-allowed") alert("Microphone permission was denied.");
+  };
+  recog.onend = () => {
+    const btn = document.getElementById("chatMic");
+    if (btn) btn.classList.remove("recording");
+  };
+
+  recog.start();
+}
+
+function getEventsWindowForChat() {
+  const today = startOfDay(new Date());
+  const list = [];
+  const seen = new Set();
+  for (let offset = -3; offset <= 45; offset++) {
+    const d = addDays(today, offset);
+    for (const ev of eventsOnDate(d)) {
+      const key = ev.id + "_" + iso(d);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const cat = categoryOf(ev.categoryId);
+      list.push({
+        id: ev.id, title: ev.title, date: iso(d),
+        start: ev.start, duration: ev.duration,
+        bufferBefore: ev.bufferBefore, bufferAfter: ev.bufferAfter,
+        mandatory: ev.mandatory, allDay: !!ev.allDay,
+        category: cat.name
+      });
+    }
+  }
+  return list;
+}
+
+async function sendChatMessage(text) {
+  if (!text || !text.trim()) return;
+  chatMessages.push({ role: "user", text });
+  chatSending = true;
+  renderChatPanel();
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: text,
+        history: chatMessages.slice(0, -1).map(m => ({ role: m.role, text: m.text })),
+        events: getEventsWindowForChat(),
+        categories: categories.map(c => ({ name: c.name, earnsDefault: !!c.earnsDefault })),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        todayISO: iso(new Date())
+      })
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data) throw new Error((data && data.error) || "Chat request failed");
+
+    if (data.type === "actions" && Array.isArray(data.actions) && data.actions.length) {
+      const summaries = data.actions.map(a => executeChatAction(a));
+      const summaryText = summaries.filter(Boolean).join(" ");
+      chatMessages.push({ role: "model", text: data.text || summaryText || "Done." });
+    } else {
+      chatMessages.push({ role: "model", text: data.text || "..." });
+    }
+  } catch (e) {
+    console.error("Chat failed:", e);
+    chatMessages.push({ role: "model", text: "Sorry, I couldn't process that — try again in a moment." });
+  }
+
+  chatSending = false;
+  renderChatPanel();
+}
+
+function executeChatAction(action) {
+  const args = action.args || {};
+
+  if (action.name === "createEvent") {
+    const draft = buildDraftFromAIData({
+      title: args.title, date: args.date, time: args.time,
+      duration: args.duration, category: args.category,
+      bufferBefore: args.bufferBefore, bufferAfter: args.bufferAfter,
+      mandatory: args.mandatory, earnsMoney: args.earnsMoney,
+      recurrence: "none", reminder: args.reminder, allDay: args.allDay
+    }, args.title || "");
+    if (Number.isFinite(args.recurrenceDays)) draft.recurrenceDays = args.recurrenceDays;
+
+    const conflict = hasOverlapConflict(draft);
+    events.push(draft);
+    save(); render();
+    return conflict
+      ? `Added "${draft.title}" on ${draft.dateISO} — heads up, it overlaps with "${conflict.title}".`
+      : `Added "${draft.title}" on ${draft.dateISO}${draft.allDay ? "" : ` at ${minToLabel(draft.start)}`}.`;
+  }
+
+  if (action.name === "deleteEvent") {
+    const match = findMatchingEvent(args.matchTitle, args.matchDate, args.matchTime);
+    if (!match) return `Couldn't find an event matching "${args.matchTitle}".`;
+    if (getRecurrenceDays(match.ev) > 0) {
+      openDeleteChoice(match.ev, null, iso(match.date));
+      return `"${match.ev.title}" repeats — check the popup to choose what to delete.`;
+    }
+    const deletedEvent = match.ev;
+    events = events.filter(e => e.id !== deletedEvent.id);
+    save(); render();
+    showUndoSnackbar(`Deleted "${deletedEvent.title}"`, () => { events.push(deletedEvent); save(); render(); });
+    return `Deleted "${deletedEvent.title}".`;
+  }
+
+  if (action.name === "moveEvent") {
+    const match = findMatchingEvent(args.matchTitle, args.matchDate, args.matchTime);
+    if (!match) return `Couldn't find an event matching "${args.matchTitle}" to move.`;
+    if (getRecurrenceDays(match.ev) > 0) {
+      return `"${match.ev.title}" repeats — please open it manually to move it.`;
+    }
+    const [hh, mm] = (args.newTime || "12:00").split(":").map(Number);
+    const newStart = isNaN(hh) ? match.ev.start : hh * 60 + (isNaN(mm) ? 0 : mm);
+    const newDateISO = args.newDate || match.ev.dateISO;
+    const updated = { ...match.ev, dateISO: newDateISO, start: newStart };
+    events = events.map(e => e.id === updated.id ? updated : e);
+    save(); render();
+    return `Moved "${updated.title}" to ${newDateISO} ${minToLabel(newStart)}.`;
+  }
+
+  return "";
 }
 
 function shiftWeek(n) { weekStart = addDays(weekStart, 7*n); selectedDate = addDays(selectedDate,7*n); render(); }
