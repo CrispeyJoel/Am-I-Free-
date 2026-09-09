@@ -359,7 +359,7 @@ button {
   box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
 }
 
-.leftbar-btn {
+.todaybtn.leftbar-btn {
   height: 52px;
   padding: 0 22px;
   font-size: 0.95rem;

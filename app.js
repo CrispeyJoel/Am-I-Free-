@@ -753,7 +753,10 @@ function attachDayPipsSwipe() {
     // Require a clearly horizontal, deliberate swipe — ignores taps and vertical drift
     if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
 
-    if (dx < 0) shiftWeek(1); else shiftWeek(-1);
+    const direction = dx < 0 ? 1 : -1;
+    const target = addDays(selectedDate, 7 * direction);
+    selectedDate = target;
+    scrollToDay(target, true); // smooth — same mechanism single-day swipes already use
   });
 }
 
