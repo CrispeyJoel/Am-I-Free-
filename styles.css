@@ -67,9 +67,7 @@ button {
   top: 0;
   z-index: 20;
   background: var(--bg);
-
-  padding: 14px 16px 8px;
-
+  padding: 8px 16px 4px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -150,21 +148,15 @@ button {
    ========================================================= */
 
 .freebanner {
-  margin: 4px 16px 10px;
-
-  padding: 14px 16px;
-  min-height: 54px;
-
+  margin: 0 16px 6px;
+  padding: 10px 14px;
+  min-height: 44px;
   border-radius: var(--radius);
-
-  /* Soft green instead of dark blue */
   background: var(--free-bg);
   color: var(--free-ink);
-
   display: flex;
   align-items: center;
   gap: 10px;
-
   border: 1px solid rgba(95, 175, 114, 0.16);
 }
 
@@ -207,9 +199,7 @@ button {
 .daypips {
   display: flex;
   justify-content: space-between;
-
-  padding: 0 16px 10px;
-
+  padding: 0 16px 6px;
   gap: 4px;
 }
 
@@ -1079,7 +1069,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px 10px;
+  padding: 0 16px 4px;
   gap: 8px;
 }
 
@@ -1249,7 +1239,7 @@ button {
   text-align: center;
   font-size: 0.68rem;
   color: var(--ink-soft);
-  padding: 0 16px 6px;
+  padding: 0 16px 4px;
 }
 .synctag.fail {
   color: var(--danger);
