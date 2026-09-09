@@ -197,6 +197,11 @@ function refreshSyncTag() {
     tag.classList.toggle("fail", syncFailed);
   }
 }
+function defaultCategory() {
+  return categories.find(c => c.id === "personal")
+    || categories.find(c => c.special !== "love")
+    || categories[0];
+}
 function categoryOf(id) { return categories.find(c=>c.id===id) || categories[0]; }
 function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
@@ -359,7 +364,7 @@ function parseQuickAdd(text) {
   const title = s || "Untitled";
   const date = dayOffset===null ? selectedDate : addDays(startOfDay(new Date()), dayOffset);
 
-  let categoryId = categories[categories.length-1].id;
+  let categoryId = defaultCategory().id;
   for (const c of categories) {
     if (title.toLowerCase().includes(c.name.toLowerCase())) { categoryId = c.id; break; }
   }
@@ -1185,7 +1190,7 @@ async function processVoiceText(text) {
 
 function buildDraftFromAIData(data, text) {
   const cat = categories.find(c => c.name.toLowerCase() === (data.category || "").toLowerCase())
-    || categories[categories.length - 1];
+    || defaultCategory();
   const [hh, mm] = (data.time || "12:00").split(":").map(Number);
   const isAllDay = !!data.allDay;
 
