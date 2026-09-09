@@ -216,6 +216,8 @@ function getRecurrenceDays(ev) {
 function occursOn(ev, date) {
   const dStr = iso(date);
 
+  if (ev.seriesEndISO && dStr >= ev.seriesEndISO) return false;
+
   if (ev.allDay && ev.endDateISO) {
     return dStr >= ev.dateISO && dStr <= ev.endDateISO;
   }
@@ -1639,6 +1641,55 @@ function openDayAgenda(date) {
   attachRowHandlers();
 }
 
+function openEditChoice(originalDraft, updated, parentOverlay, occurrenceDateISO) {
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h2>Save changes to this repeating event</h2>
+      <p style="font-size:0.88rem; color:var(--ink-soft); margin:0 0 16px;">This event repeats. What would you like to do?</p>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <button class="btn ghost" id="editCancel">Cancel — don't save</button>
+        <button class="btn ghost" id="editOne">Save just this date (${occurrenceDateISO})</button>
+        <button class="btn" id="editAll" style="background:var(--danger); color:white;">Save this and all future dates</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector("#editCancel").addEventListener("click", () => overlay.remove());
+
+  overlay.querySelector("#editOne").addEventListener("click", () => {
+    const orig = events.find(e => e.id === originalDraft.id);
+    if (orig) {
+      orig.excludedDates = Array.isArray(orig.excludedDates) ? [...orig.excludedDates, occurrenceDateISO] : [occurrenceDateISO];
+    }
+    const oneOff = { ...updated, id: uid(), seriesId: uid(), dateISO: occurrenceDateISO, endDateISO: null, recurrence: "none", recurrenceDays: 0, excludedDates: [], seriesEndISO: null };
+    events.push(oneOff);
+    save();
+    overlay.remove();
+    parentOverlay?.remove();
+    selectedDate = startOfDay(new Date(occurrenceDateISO));
+    weekStart = startOfWeek(selectedDate);
+    view = "day";
+    render();
+  });
+
+  overlay.querySelector("#editAll").addEventListener("click", () => {
+    const orig = events.find(e => e.id === originalDraft.id);
+    if (orig) orig.seriesEndISO = occurrenceDateISO;
+    const newSeries = { ...updated, id: uid(), seriesId: uid(), dateISO: occurrenceDateISO, endDateISO: null, excludedDates: [], seriesEndISO: null };
+    events.push(newSeries);
+    save();
+    overlay.remove();
+    parentOverlay?.remove();
+    selectedDate = startOfDay(new Date(occurrenceDateISO));
+    weekStart = startOfWeek(selectedDate);
+    view = "day";
+    render();
+  });
+}
+
 function openDeleteChoice(draft, parentOverlay, targetDateISO) {
   const overlay = document.createElement("div");
   overlay.className = "overlay";
@@ -1666,7 +1717,7 @@ function openDeleteChoice(draft, parentOverlay, targetDateISO) {
     }
     save();
     overlay.remove();
-    parentOverlay.remove();
+    parentOverlay?.remove();
     render();
   });
 
@@ -1674,7 +1725,7 @@ function openDeleteChoice(draft, parentOverlay, targetDateISO) {
     events = events.filter(e => e.id !== draft.id);
     save();
     overlay.remove();
-    parentOverlay.remove();
+    parentOverlay?.remove();
     render();
   });
 }
