@@ -88,6 +88,28 @@ button {
   justify-content: space-between;
 }
 
+.topbar-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.topbar-side-left {
+  justify-content: flex-start;
+}
+
+.topbar-side-right {
+  justify-content: flex-end;
+}
+
+.weeklabel {
+  flex: 0 0 auto;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
 .topbar .weeklabel {
   font-weight: 700;
   font-size: 1.05rem;
@@ -311,7 +333,7 @@ button {
   color: white;
   border-color: #16232a;
 }
-.fab-stack-left {
+/* .fab-stack-left {
   position: fixed;
   left: 12px;
   bottom: calc(8px + env(safe-area-inset-bottom));
@@ -320,6 +342,26 @@ button {
   align-items: flex-start;
   gap: 10px;
   z-index: 35;
+} */
+
+.fab-stack-left {
+  position: fixed;
+  left: 0;
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  z-index: 35;
+  background: var(--surface);
+  padding: 10px 24px 10px 16px;
+  border-radius: 0 999px 999px 0;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+}
+.leftbar-btn {
+  height: 44px;
+  padding: 0 18px;
+  font-size: 0.92rem;
 }
 
 .monthscroller {
@@ -332,13 +374,13 @@ button {
 
 .monthblock {
   scroll-snap-align: start;
-  padding-top: 6px;
+  padding-top: 2px;
 }
 
 .monthblock-label {
   font-weight: 700;
   font-size: 1rem;
-  padding: 0 16px 8px;
+  padding: 0 16px 4px;
 }
 
 /* =========================================================
@@ -704,7 +746,7 @@ button {
    ========================================================= */
 
 .monthgrid {
-  padding: 4px 16px 100px;
+  padding: 2px 16px 20px;
 }
 
 .monthhead {
