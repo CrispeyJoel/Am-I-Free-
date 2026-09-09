@@ -191,6 +191,36 @@ button {
   font-weight: 700;
 }
 
+.help-section {
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.help-section h3 {
+  font-size: 0.85rem;
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+
+.help-section p {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.help-section ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+.help-section ul li b {
+  color: var(--ink);
+}
 
 /* =========================================================
    DAY PIPS

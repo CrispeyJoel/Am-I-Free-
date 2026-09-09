@@ -1055,12 +1055,20 @@ function settingsPanelContent() {
     </div>
 
     <div class="settings-section">
-      <h3>${t("cloudAccount")}</h3>
-      <div id="cloudstatus" class="cloudstatus" style="text-align:left; padding:0 0 10px;">
-        ${currentUser ? `Synced as ${currentUser.displayName || currentUser.email}${lastSyncedAt ? ` · last saved ${formatSyncTime(lastSyncedAt)}` : ""}` : "Sign in to back up your calendar and enable notifications"}
-      </div>
-      <button class="settings-btn" id="settingsAuthBtn">
-        <span>${currentUser ? t("signOut") : t("signIn")}</span>
+      <h3>${t("backup")}</h3>
+      <button class="settings-btn" id="settingsExportBtn">
+        <span>${t("exportBackup")}</span>
+      </button>
+      <button class="settings-btn" id="settingsImportBtn">
+        <span>${t("importBackup")}</span>
+      </button>
+      <input type="file" id="settingsImportFile" accept="application/json" style="display:none;" />
+    </div>
+
+    <div class="settings-section">
+      <h3>Help</h3>
+      <button class="settings-btn" id="settingsHelpBtn">
+        <span>How to use this app</span>
         <span>›</span>
       </button>
     </div>
@@ -1145,6 +1153,7 @@ function wireSettingsPanel(panel) {
   panel.querySelector("#settingsPushBtn").addEventListener("click", () => toggleNotifications());
 
   panel.querySelector("#settingsLangSelect").addEventListener("change", (e) => setLang(e.target.value));
+  panel.querySelector("#settingsHelpBtn").addEventListener("click", openHelpSheet);
 
   panel.querySelector("#settingsExportBtn").addEventListener("click", exportBackup);
 
@@ -1325,6 +1334,77 @@ function openCategoryManager(onDone) {
     overlay.remove();
     if (onDone) onDone();
   });
+}
+
+function openHelpSheet() {
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+  overlay.innerHTML = `
+    <div class="sheet">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+        <h2 style="margin:0;">How to use this app</h2>
+        <button id="helpClose" style="border:none; background:none; font-size:1.3rem; line-height:1; color:var(--ink-soft); padding:4px;">×</button>
+      </div>
+
+      <div class="help-section">
+        <h3>Creating an event</h3>
+        <ul>
+          <li><b>Plus button</b> (bottom bar) — opens a blank event form to fill in manually.</li>
+          <li><b>Voice button</b> — say what you want ("Piano lesson Tuesday 4pm") and it fills the form in for you automatically.</li>
+          <li><b>Press and hold</b> on an empty spot in the timeline, then drag down to set the start/end time by feel — release to open the form pre-filled with that time.</li>
+        </ul>
+      </div>
+
+      <div class="help-section">
+        <h3>Event details</h3>
+        <ul>
+          <li><b>Buffer before/after</b> — travel/prep time added around the event, shown as a hatched strip.</li>
+          <li><b>Mandatory</b> — optional events show grayed out instead of full color.</li>
+          <li><b>Earns money</b> — adds a $ badge to the event.</li>
+          <li><b>Reminder</b> — how long before you need to leave (start time minus buffer) you get a push notification.</li>
+          <li><b>Repeats</b> — weekly or fortnightly recurrence.</li>
+          <li><b>All day</b> — no specific time; can also span multiple days (start day → end day) for things like trips or holidays.</li>
+        </ul>
+      </div>
+
+      <div class="help-section">
+        <h3>Categories</h3>
+        <p>Each event belongs to a category (color + name). Open "Edit categories" from inside any event to rename, recolor, add, or delete categories — including the special ❤️ category, which gets its own pink/heart styling.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>Deleting events</h3>
+        <ul>
+          <li>Tap any event to open it, then Delete.</li>
+          <li>For a repeating event, you'll be asked: delete just that one date, or the whole series going forward.</li>
+          <li><b>View button</b> (top bar) — shows a simple list of every event on the current day with a quick ✕ to delete, useful if an event is hard to reach on the timeline.</li>
+        </ul>
+      </div>
+
+      <div class="help-section">
+        <h3>Navigating</h3>
+        <p>Swipe left/right to move between days — you can keep swiping freely in either direction. Tap a day pip to jump straight to it. Use "Month" for a zoomed-out view, tap any day there to jump back into it.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>Cloud sync & notifications</h3>
+        <p>Sign in (Settings → Cloud account) to back up your calendar and enable push notifications. The small tag under the top bar shows "Synced ✓" with a timestamp, or a warning if a save fails. Notifications can be toggled on/off in Settings.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>Backup</h3>
+        <p>Export downloads a copy of everything as a file — a safety net independent of the cloud. Import restores from that file if you ever need to.</p>
+      </div>
+
+      <div class="help-section" style="border-bottom:none;">
+        <h3>Language</h3>
+        <p>Change the app's language (and voice recognition language) from Settings.</p>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector("#helpClose").addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
 }
 
 function openDayAgenda(date) {
