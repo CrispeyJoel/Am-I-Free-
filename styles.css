@@ -9,7 +9,7 @@
   --accent-warm: #E4A94F;
   --gray-event: #C7CBC6;
   --danger: #B5563C;
-  --grey: #635f5f;
+  --grey: #807b7b;
 
   /* Free status */
   --free-bg: #DDEFE2;
@@ -330,7 +330,7 @@ button {
 }
 
 .todaybtn.monthbtn-big {
-  background: #16232a;
+  background: var(--grey);
   color: white;
   border-color: #16232a;
 }
@@ -791,7 +791,7 @@ button {
 
   font-size: 0.8rem;
 
-  color: var(--grey);
+  color: var(--ink);
 
   gap: 4px;
 
