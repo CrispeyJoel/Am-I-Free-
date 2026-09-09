@@ -1229,6 +1229,8 @@ function findMatchingEvent(matchTitle, matchDateISO, matchTime) {
   return titleMatches[0];
 }
 
+
+
 let chatOpen = false;
 let chatMessages = [];
 let chatSending = false;
@@ -1393,12 +1395,9 @@ function executeChatAction(action) {
     }, args.title || "");
     if (Number.isFinite(args.recurrenceDays)) draft.recurrenceDays = args.recurrenceDays;
 
-    const conflict = hasOverlapConflict(draft);
     events.push(draft);
     save(); render();
-    return conflict
-      ? `Added "${draft.title}" on ${draft.dateISO} — heads up, it overlaps with "${conflict.title}".`
-      : `Added "${draft.title}" on ${draft.dateISO}${draft.allDay ? "" : ` at ${minToLabel(draft.start)}`}.`;
+    return `Added "${draft.title}" on ${draft.dateISO}${draft.allDay ? "" : ` at ${minToLabel(draft.start)}`}.`;
   }
 
   if (action.name === "deleteEvent") {
