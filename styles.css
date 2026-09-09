@@ -291,6 +291,24 @@ button {
   touch-action: pan-y;
 }
 
+.monthbtn-big {
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 0 20px;
+  height: 46px;
+}
+
+.fab-stack-left {
+  position: fixed;
+  left: 12px;
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  z-index: 35;
+}
+
 /* =========================================================
    DAY PIPS
    ========================================================= */
