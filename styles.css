@@ -716,6 +716,17 @@ button {
 }
 .addbtn-main:active { transform: scale(0.94); }
 
+.quickbar .todaybtn {
+  background: var(--surface);
+  color: var(--accent);
+  width: auto;
+  min-width: 0;
+  height: 50px;
+  padding: 0 14px;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
 .quickbar input {
   flex: 1;
 
