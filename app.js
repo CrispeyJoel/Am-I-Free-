@@ -1351,27 +1351,10 @@ function openHelpSheet() {
       <div class="help-section">
         <h3>Creating an event</h3>
         <ul>
-          <li><b>Plus button</b> (bottom bar) — opens a blank event form to fill in manually.</li>
-          <li><b>Voice button</b> — say what you want ("Piano lesson Tuesday 4pm") and it fills the form in for you automatically.</li>
-          <li><b>Press and hold</b> on an empty spot in the timeline, then drag down to set the start/end time by feel — release to open the form pre-filled with that time.</li>
+          <li><b>Plus button</b> - pens a blank event form to fill in manually.</li>
+          <li><b>Voice button</b> - tell an AI to schedule an event for you and it fills the form in automatically.</li>
+          <li><b>Press and hold</b> on an empty spot in the timeline, then drag down to set the start/end time by feel - release to open the form pre-filled with that time.</li>
         </ul>
-      </div>
-
-      <div class="help-section">
-        <h3>Event details</h3>
-        <ul>
-          <li><b>Buffer before/after</b> — travel/prep time added around the event, shown as a hatched strip.</li>
-          <li><b>Mandatory</b> — optional events show grayed out instead of full color.</li>
-          <li><b>Earns money</b> — adds a $ badge to the event.</li>
-          <li><b>Reminder</b> — how long before you need to leave (start time minus buffer) you get a push notification.</li>
-          <li><b>Repeats</b> — weekly or fortnightly recurrence.</li>
-          <li><b>All day</b> — no specific time; can also span multiple days (start day → end day) for things like trips or holidays.</li>
-        </ul>
-      </div>
-
-      <div class="help-section">
-        <h3>Categories</h3>
-        <p>Each event belongs to a category (color + name). Open "Edit categories" from inside any event to rename, recolor, add, or delete categories — including the special ❤️ category, which gets its own pink/heart styling.</p>
       </div>
 
       <div class="help-section">
@@ -1379,23 +1362,18 @@ function openHelpSheet() {
         <ul>
           <li>Tap any event to open it, then Delete.</li>
           <li>For a repeating event, you'll be asked: delete just that one date, or the whole series going forward.</li>
-          <li><b>View button</b> (top bar) — shows a simple list of every event on the current day with a quick ✕ to delete, useful if an event is hard to reach on the timeline.</li>
+          <li><b>View button</b> - shows a simple list of every event on the current day with a quick ✕ to delete</li>
         </ul>
       </div>
 
       <div class="help-section">
-        <h3>Navigating</h3>
-        <p>Swipe left/right to move between days — you can keep swiping freely in either direction. Tap a day pip to jump straight to it. Use "Month" for a zoomed-out view, tap any day there to jump back into it.</p>
-      </div>
-
-      <div class="help-section">
         <h3>Cloud sync & notifications</h3>
-        <p>Sign in (Settings → Cloud account) to back up your calendar and enable push notifications. The small tag under the top bar shows "Synced ✓" with a timestamp, or a warning if a save fails. Notifications can be toggled on/off in Settings.</p>
+        <p>Sign in to back up your calendar and enable push notifications. The small tag under the top bar shows "Synced ✓" with a timestamp, or a warning if a save fails. Notifications can be toggled on/off in Settings.</p>
       </div>
 
       <div class="help-section">
         <h3>Backup</h3>
-        <p>Export downloads a copy of everything as a file — a safety net independent of the cloud. Import restores from that file if you ever need to.</p>
+        <p>Export downloads a copy of everything as a file - a safety net independent of the cloud. Import restores from that file if you ever need to.</p>
       </div>
 
       <div class="help-section" style="border-bottom:none;">
