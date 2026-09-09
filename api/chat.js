@@ -19,15 +19,15 @@ const TOOLS = [{
           time: { type: "STRING", description: "24-hour HH:MM" },
           duration: { type: "INTEGER", description: "minutes, default 60" },
           category: { type: "STRING" },
-          bufferBefore: { type: "INTEGER" },
-          bufferAfter: { type: "INTEGER" },
+          bufferBefore: { type: "INTEGER", description: "Minutes of buffer before the event. Default 30 unless the user says otherwise. If the user explicitly says 'no buffer' or similar, use 0. ALWAYS include this field explicitly." },
+          bufferAfter: { type: "INTEGER", description: "Minutes of buffer after the event. Default 30 unless the user says otherwise. If the user explicitly says 'no buffer' or similar, use 0. ALWAYS include this field explicitly." },
           mandatory: { type: "BOOLEAN" },
           earnsMoney: { type: "BOOLEAN" },
           allDay: { type: "BOOLEAN" },
           recurrenceDays: { type: "INTEGER", description: "0 = no repeat, 1 = daily, 7 = weekly" },
           reminder: { type: "STRING", enum: ["none", "30m", "1h", "6h", "12h", "1d", "1w", "1mo"] }
         },
-        required: ["title", "date", "time"]
+        required: ["title", "date", "time", "bufferBefore", "bufferAfter"]
       }
     },
     {
@@ -57,7 +57,27 @@ const TOOLS = [{
         },
         required: ["matchTitle", "newDate", "newTime"]
       }
-    }
+    },
+        {
+      name: "editEvent",
+      description: "Edit an existing event's details — category, buffers, title, mandatory status, earns-money flag, or reminder. Do NOT use this for date/time changes — use moveEvent for those. Only include the fields actually being changed.",
+      parameters: {
+        type: "OBJECT",
+        properties: {
+          matchTitle: { type: "STRING" },
+          matchDate: { type: "STRING", description: "YYYY-MM-DD, if known" },
+          matchTime: { type: "STRING", description: "HH:MM, if known" },
+          newTitle: { type: "STRING" },
+          category: { type: "STRING" },
+          bufferBefore: { type: "INTEGER" },
+          bufferAfter: { type: "INTEGER" },
+          mandatory: { type: "BOOLEAN" },
+          earnsMoney: { type: "BOOLEAN" },
+          reminder: { type: "STRING", enum: ["none", "30m", "1h", "6h", "12h", "1d", "1w", "1mo"] }
+        },
+        required: ["matchTitle"]
+      }
+    },
   ]
 }];
 
@@ -85,7 +105,10 @@ Behavior:
 - Keep responses SHORT and conversational, like a quick text to a friend — one sentence is often enough. Never use formal report language, bullet points, or headers in your replies.
 - Refer to events by their plain name only (e.g. "your dentist appointment" or "piano lesson"), never with technical framing like "the event titled X" or "Event: X".
 - When confirming an action, be brief: "Done, dinner's on Friday at 7." not "I have successfully created an event titled 'Dinner' on 2026-09-12 at 19:00."
+- Use editEvent for any change to an EXISTING event that isn't a date/time change (category, buffers, title, mandatory, earns money, reminder). Use moveEvent only for date/time changes.
 - If a request is ambiguous (e.g. multiple events could match "delete my meeting"), ask a brief clarifying question instead of guessing.
+- Never invent events that aren't in the data above.
+- CRITICAL: only ever claim you did something if you actually called the matching tool in this same turn. If a request isn't something any available tool can do, say so honestly instead of pretending it's done.
 - Never invent events that aren't in the data above.`;
 
   const contents = [];

@@ -1436,6 +1436,32 @@ function executeChatAction(action) {
     save(); render();
     return `Moved "${updated.title}" to ${newDateISO} ${minToLabel(newStart)}.`;
   }
+  if (action.name === "editEvent") {
+    const match = findMatchingEvent(args.matchTitle, args.matchDate, args.matchTime);
+    if (!match) return `Couldn't find ${args.matchTitle}.`;
+    if (getRecurrenceDays(match.ev) > 0) {
+      return `${match.ev.title} repeats — please open it manually to edit it.`;
+    }
+
+    const updates = {};
+    if (typeof args.newTitle === "string" && args.newTitle.trim()) updates.title = args.newTitle.trim();
+    if (typeof args.category === "string" && args.category.trim()) {
+      const cat = categories.find(c => c.name.toLowerCase() === args.category.toLowerCase());
+      if (cat) updates.categoryId = cat.id;
+    }
+    if (Number.isFinite(args.bufferBefore)) updates.bufferBefore = args.bufferBefore;
+    if (Number.isFinite(args.bufferAfter)) updates.bufferAfter = args.bufferAfter;
+    if (typeof args.mandatory === "boolean") updates.mandatory = args.mandatory;
+    if (typeof args.earnsMoney === "boolean") updates.earnsMoney = args.earnsMoney;
+    if (typeof args.reminder === "string" && args.reminder) updates.reminder = args.reminder;
+
+    if (Object.keys(updates).length === 0) return `Not sure what to change about ${match.ev.title}.`;
+
+    const updatedEvent = { ...match.ev, ...updates };
+    events = events.map(e => e.id === updatedEvent.id ? updatedEvent : e);
+    save(); render();
+    return `Updated ${match.ev.title}.`;
+  }
 
   return "";
 }
