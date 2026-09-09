@@ -1935,8 +1935,15 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       recurrence: overlay.querySelector("#f-recur").value,
       reminder: overlay.querySelector("#f-reminder").value,
       mandatory: overlay.querySelector("#f-mandatory").checked,
-      earnsMoney: overlay.querySelector("#f-money").checked
+      earnsMoney: overlay.querySelector("#f-money").checked,
+      notes: overlay.querySelector("#f-notes") ? overlay.querySelector("#f-notes").value.trim() : (draft.notes || "")
     };
+
+    if (isEdit && getRecurrenceDays(draft) > 0) {
+      openEditChoice(draft, updated, overlay, occurrenceDateISO || draft.dateISO);
+      return;
+    }
+
     if (isEdit) {
       events = events.map(e=> e.id===updated.id ? updated : e);
     } else {
