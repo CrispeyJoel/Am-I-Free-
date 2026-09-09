@@ -150,22 +150,22 @@ self.addEventListener("activate", event => {
         url.pathname === "/"
       )
     ) {
-    event.respondWith(
-      fetch(request)
-        .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE).then(cache => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
-    return;
-  }
+      e.respondWith(
+        fetch(e.request)
+          .then(response => {
+            const copy = response.clone();
+            caches.open(CACHE).then(cache => cache.put(e.request, copy));
+            return response;
+          })
+          .catch(() => caches.match(e.request))
+      );
+      return;
+    }
 
-  event.respondWith(
-    caches.match(request).then(cached => cached || fetch(request))
-  );
-});
+    e.respondWith(
+      caches.match(e.request).then(cached => cached || fetch(e.request))
+    );
+  });
 
 /* ============================================================
    FIREBASE CLOUD MESSAGING
