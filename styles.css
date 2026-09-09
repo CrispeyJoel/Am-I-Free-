@@ -699,7 +699,8 @@ button {
 }
 
 .addbtn-main {
-  width: 96px;
+  width: 96px !important;
+  min-width: 96px;
   height: 64px;
   border-radius: 32px;
   background: #16232a;
@@ -717,6 +718,7 @@ button {
 .addbtn-main:active { transform: scale(0.94); }
 
 .quickbar .todaybtn {
+  border: 1px solid var(--line);
   background: var(--bg);
   color: var(--accent);
   width: auto;
@@ -746,19 +748,8 @@ button {
 }
 
 .quickbar button {
-  border: none;
-
-  background: var(--accent);
-
-  color: white;
-
-  width: 50px;
-  min-width: 50px;
   height: 50px;
-
   border-radius: 10px;
-
-  font-size: 1.2rem;
 }
 
 .quickbar button:active {
