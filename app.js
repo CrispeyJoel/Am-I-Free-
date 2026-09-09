@@ -569,9 +569,17 @@ function renderDayCol(date) {
       }).join("")}</div>`
     : "";
 
+  const nominalHeight = ((DAY_END_MIN-DAY_START_MIN)/60+1)*HOUR_PX;
+  let maxBottom = nominalHeight;
+  for (const ev of timedEvs) {
+    const bottom = (ev.start + ev.duration + ev.bufferAfter - DAY_START_MIN) / 60 * HOUR_PX;
+    if (bottom > maxBottom) maxBottom = bottom;
+  }
+  const timelineHeight = maxBottom + 20;
+
   return `<div class="daycol" data-date="${iso(date)}">
     ${alldayHtml}
-    <div class="timeline" style="height:${((DAY_END_MIN-DAY_START_MIN)/60+1)*HOUR_PX}px">
+    <div class="timeline" style="height:${timelineHeight}px">
       ${hours}
       <div class="eventlayer">${blocks}</div>
       ${nowLine}
