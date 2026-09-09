@@ -1240,8 +1240,14 @@ function openChatPanel() {
   renderChatPanel();
 }
 
+let activeChatRecognition = null;
+
 function closeChatPanel() {
   chatOpen = false;
+  if (activeChatRecognition) {
+    activeChatRecognition.abort();
+    activeChatRecognition = null;
+  }
   const el = document.getElementById("chatPanel");
   if (el) el.remove();
 }
@@ -1298,6 +1304,7 @@ function startChatVoiceInput() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) { alert("Voice input isn't supported on this browser."); return; }
   const recog = new SpeechRecognition();
+  activeChatRecognition = recog;
   recog.lang = VOICE_LOCALE[currentLang] || "en-AU";
   recog.continuous = false;
   recog.interimResults = false;
@@ -1314,6 +1321,7 @@ function startChatVoiceInput() {
     if (event.error === "not-allowed") alert("Microphone permission was denied.");
   };
   recog.onend = () => {
+    activeChatRecognition = null;
     const btn = document.getElementById("chatMic");
     if (btn) btn.classList.remove("recording");
   };

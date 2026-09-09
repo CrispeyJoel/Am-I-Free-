@@ -121,10 +121,10 @@ button {
 .chat-panel {
   position: fixed;
   left: 0; right: 0; bottom: 0;
-  height: min(52vh, 460px);
-  background: rgba(255,255,255,0.72);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  height: min(38vh, 340px);
+  background: rgba(255,255,255,0.5);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -4px 24px rgba(0,0,0,0.18);
   z-index: 55;
@@ -132,7 +132,7 @@ button {
   flex-direction: column;
 }
 [data-theme="dark"] .chat-panel {
-  background: rgba(31,36,38,0.75);
+  background: rgba(31,36,38,0.5);
 }
 .chat-header {
   display: flex; align-items: center; justify-content: space-between;
