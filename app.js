@@ -1518,8 +1518,12 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       const [ehh,emm] = overlay.querySelector("#f-endtime").value.split(":").map(Number);
       startMin = hh*60+mm;
       let endMin = ehh*60+emm;
-      if (endMin <= startMin) endMin += 24*60; // crosses midnight
-      duration = Math.max(5, endMin - startMin);
+      if (endMin <= startMin) {
+        const crossesMidnight = confirm("End time is before start time — does this event go past midnight into the next day? Cancel if that's a mistake.");
+        if (!crossesMidnight) { endMin = startMin + 30; }
+        else { endMin += 24*60; }
+      }
+      duration = Math.max(5, Math.min(endMin - startMin, 18*60)); // hard cap at 18h, sanity limit
       bufferBefore = parseInt(overlay.querySelector("#f-bufbefore").value,10) || 0;
       bufferAfter = parseInt(overlay.querySelector("#f-bufafter").value,10) || 0;
     } else {
