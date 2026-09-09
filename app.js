@@ -1623,10 +1623,12 @@ function openDayAgenda(date) {
           openDeleteChoice(ev, overlay, dStr);
         } else {
           if (!confirm(`Delete "${ev.title}"?`)) return;
+          const deletedEvent = ev;
           events = events.filter(x => x.id !== ev.id);
           save();
           overlay.remove();
           render();
+          showUndoSnackbar(`Deleted "${deletedEvent.title}"`, () => { events.push(deletedEvent); save(); render(); });
         }
       });
     });
@@ -1712,22 +1714,46 @@ function openDeleteChoice(draft, parentOverlay, targetDateISO) {
   overlay.querySelector("#delOne").addEventListener("click", () => {
     const ev = events.find(e => e.id === draft.id);
     if (ev) {
-      ev.excludedDates = Array.isArray(ev.excludedDates) ? ev.excludedDates : [];
-      ev.excludedDates.push(targetDateISO);
+      const prevExcluded = Array.isArray(ev.excludedDates) ? [...ev.excludedDates] : [];
+      ev.excludedDates = [...prevExcluded, targetDateISO];
+      save();
+      overlay.remove();
+      parentOverlay?.remove();
+      render();
+      showUndoSnackbar(`Removed "${ev.title}" on ${targetDateISO}`, () => { ev.excludedDates = prevExcluded; save(); render(); });
+    } else {
+      overlay.remove();
+      parentOverlay?.remove();
     }
-    save();
-    overlay.remove();
-    parentOverlay?.remove();
-    render();
   });
 
   overlay.querySelector("#delAll").addEventListener("click", () => {
+    const deletedEvent = events.find(e => e.id === draft.id);
     events = events.filter(e => e.id !== draft.id);
     save();
     overlay.remove();
     parentOverlay?.remove();
     render();
+    if (deletedEvent) showUndoSnackbar(`Deleted "${deletedEvent.title}" (entire series)`, () => { events.push(deletedEvent); save(); render(); });
   });
+}
+
+let undoTimer = null;
+function showUndoSnackbar(message, restoreFn) {
+  clearTimeout(undoTimer);
+  const existing = document.getElementById("undoSnackbar");
+  if (existing) existing.remove();
+  const bar = document.createElement("div");
+  bar.id = "undoSnackbar";
+  bar.className = "undo-snackbar";
+  bar.innerHTML = `<span>${escapeHtml(message)}</span><button type="button" id="undoBtn">Undo</button>`;
+  document.body.appendChild(bar);
+  bar.querySelector("#undoBtn").addEventListener("click", () => {
+    clearTimeout(undoTimer);
+    bar.remove();
+    restoreFn();
+  });
+  undoTimer = setTimeout(() => { bar.remove(); }, 5000);
 }
 
 /* ---------- Add/edit sheet ---------- */
@@ -1866,8 +1892,10 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       if (getRecurrenceDays(draft) > 0) {
         openDeleteChoice(draft, overlay, occurrenceDateISO || draft.dateISO);
       } else {
+        const deletedEvent = draft;
         events = events.filter(e=>e.id!==draft.id);
         save(); overlay.remove(); render();
+        showUndoSnackbar(`Deleted "${deletedEvent.title}"`, () => { events.push(deletedEvent); save(); render(); });
       }
     });
   }

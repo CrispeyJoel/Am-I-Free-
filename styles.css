@@ -118,6 +118,32 @@ button {
   justify-content: flex-start;
 }
 
+.undo-snackbar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(90px + env(safe-area-inset-bottom));
+  background: #16232a;
+  color: white;
+  padding: 12px 16px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+  z-index: 45;
+  max-width: 90%;
+}
+.undo-snackbar #undoBtn {
+  background: none;
+  border: none;
+  color: #7fd7ff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0;
+}
+
 .topbar-side-right {
   justify-content: flex-end;
 }
