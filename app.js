@@ -563,6 +563,8 @@ function renderScroller() {
   return html + `</div>`;
 }
 
+const NOTIF_ICON_SVG = `<svg class="notif-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`;
+
 function renderDayCol(date) {
   const evs = eventsOnDate(date);
   const timedEvs = evs.filter(e => !e.allDay);
@@ -595,11 +597,11 @@ function renderDayCol(date) {
     const isCompact = ev.duration <= 45;
     const eventInner = isCompact
       ? `<div class="eventline">
-          <span class="title">${escapeHtml(ev.title)}</span>
+          <span class="title">${isNotif?NOTIF_ICON_SVG:""}${escapeHtml(ev.title)}</span>
           <span class="meta">${minToLabel(ev.start)} · ${cat.name}</span>
           ${ev.earnsMoney?`<span class="dollar">$</span>`:""}
         </div>`
-      : `<div class="title">${escapeHtml(ev.title)}${ev.earnsMoney?`<span class="dollar">$</span>`:""}</div>
+      : `<div class="title">${isNotif?NOTIF_ICON_SVG:""}${escapeHtml(ev.title)}${ev.earnsMoney?`<span class="dollar">$</span>`:""}</div>
          <div class="meta">${minToLabel(ev.start)} · ${cat.name}</div>`;
 
         blocks += `<div class="event ${isCompact?"compact":""} ${isLove?"love-cat":""} ${isNotif?"notif-kind":""} ${ev.mandatory?"":"optional"}" style="top:${top}px;height:${height}px;background:${cat.color};border-color:${cat.color};${positionStyle}" data-edit="${ev.id}" data-date="${iso(date)}">
@@ -618,7 +620,7 @@ function renderDayCol(date) {
         const cat = categoryOf(ev.categoryId);
         const isLove = cat.special === "love";
         return `<div class="allday-chip ${isLove?"love-cat":""} ${ev.mandatory?"":"optional"}" style="background:${cat.color};border-color:${cat.color}" data-edit="${ev.id}" data-date="${iso(date)}">
-          <span>${escapeHtml(ev.title)}</span>
+        <span class="title">${isNotif?NOTIF_ICON_SVG:""}${escapeHtml(ev.title)}</span>
           ${ev.earnsMoney?`<span class="dollar">$</span>`:""}
         </div>`;
       }).join("")}</div>`
