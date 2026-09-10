@@ -619,8 +619,9 @@ function renderDayCol(date) {
     ? `<div class="allday-strip">${alldayEvs.map(ev => {
         const cat = categoryOf(ev.categoryId);
         const isLove = cat.special === "love";
+        const isNotif = ev.kind === "notification";
         return `<div class="allday-chip ${isLove?"love-cat":""} ${ev.mandatory?"":"optional"}" style="background:${cat.color};border-color:${cat.color}" data-edit="${ev.id}" data-date="${iso(date)}">
-        <span class="title">${isNotif?NOTIF_ICON_SVG:""}${escapeHtml(ev.title)}</span>
+          <span>${isNotif?NOTIF_ICON_SVG:""}${escapeHtml(ev.title)}</span>
           ${ev.earnsMoney?`<span class="dollar">$</span>`:""}
         </div>`;
       }).join("")}</div>`
