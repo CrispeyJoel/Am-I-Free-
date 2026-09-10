@@ -2080,6 +2080,237 @@ function showUndoSnackbar(message, restoreFn) {
 }
 
 /* ---------- Add/edit sheet ---------- */
+// function openSheet(ev, isNew=false, occurrenceDateISO=null) {
+//   const isEdit = !isNew && ev && events.includes(ev);
+//   const draft = isEdit ? ev : (ev || {
+//     id: uid(), seriesId: uid(), title:"", categoryId: categories[0].id,
+//     dateISO: iso(selectedDate), start: roundToNext30(), duration:60,
+//     bufferBefore:0,
+//     bufferAfter:0,
+//     reminder:"30m",
+//     mandatory:true,
+//     earnsMoney:false,
+//     recurrence:"none"
+//   });
+
+//   const overlay = document.createElement("div");
+//   overlay.className = "overlay";
+//   overlay.innerHTML = `
+//     <div class="sheet">
+//       <h2>${isEdit ? t("editEvent") : t("newEvent")}</h2>
+//       ${!isEdit ? `
+//       <div class="kind-tabs">
+//         <button type="button" class="kind-tab ${draft.kind !== "notification" ? "active" : ""}" data-kind="event">Event</button>
+//         <button type="button" class="kind-tab ${draft.kind === "notification" ? "active" : ""}" data-kind="notification">Notification</button>
+//       </div>` : ""}
+//       <div class="field"><label>${t("titleLabel")}</label><input type="text" id="f-title" value="${escapeHtml(draft.title)}" /></div>
+//       <div class="field"><label>${t("dateLabel")}</label><input type="date" id="f-date" value="${draft.dateISO}" /></div>
+//       <div class="togglerow" style="border-bottom:none"><span>${t("allDay")}</span><input type="checkbox" id="f-allday" ${draft.allDay?"checked":""} /></div>
+//       <div class="row2" id="f-timerow" style="${draft.allDay?"display:none;":""}">
+//         <div class="field"><label>${t("startTime")}</label><input type="time" id="f-time" value="${pad2(Math.floor(draft.start/60))}:${pad2(draft.start%60)}" /></div>
+//         <div class="field" id="f-endtime-field" style="${draft.kind==="notification"?"display:none;":""}"><label>${t("endTime")}</label><input type="time" id="f-endtime" value="${pad2(Math.floor(((draft.start+draft.duration)%1440)/60))}:${pad2((draft.start+draft.duration)%60)}" /></div>
+//       </div>
+//       <div class="row2" id="f-allday-daterow" style="${draft.allDay?"":"display:none;"}">
+//         <div class="field"><label>${t("startDay")}</label><input type="date" id="f-alldaystart" value="${draft.dateISO}" /></div>
+//         <div class="field"><label>${t("endDay")}</label><input type="date" id="f-alldayend" value="${draft.endDateISO || draft.dateISO}" /></div>
+//       </div>
+//       <div class="field">
+//         <label style="display:flex; align-items:center; justify-content:space-between;">
+//           <span>${t("category")}</span>
+//           <button type="button" id="manageCatsBtn" style="border:none; background:none; text-decoration:underline; cursor:pointer; font-size:0.75rem; color:var(--ink-soft); padding:0;">${t("editCategories")}</button>
+//         </label>
+//         <div class="chiprow" id="f-cats">
+//           ${categories.map(c=>`<div class="chip ${c.id===draft.categoryId?"selected":""}" data-cat="${c.id}"><span class="swatch" style="background:${c.color}"></span>${c.name}</div>`).join("")}
+//         </div>
+//       </div>
+//             <div class="row2" id="f-bufferrow" style="${(draft.allDay||draft.kind==="notification")?"display:none;":""}">
+//         <div class="field">
+//           <label>${t("bufferBefore")}</label>
+//           <select id="f-bufbefore">
+//             ${Array.from({length:25},(_,i)=>i*5).map(m => `
+//               <option value="${m}" ${Number(draft.bufferBefore) === m ? "selected" : ""}>
+//                 ${m < 60 ? `${m} ${t("minutes")}` : `${Math.floor(m/60)} ${m >= 120 ? t("hours") : t("hour")}${m % 60 ? ` ${m % 60} ${t("minutes")}` : ""}`}
+//               </option>
+//             `).join("")}
+//           </select>
+//         </div>
+
+//         <div class="field">
+//           <label>${t("bufferAfter")}</label>
+//           <select id="f-bufafter">
+//             ${Array.from({length:25},(_,i)=>i*5).map(m => `
+//               <option value="${m}" ${Number(draft.bufferAfter) === m ? "selected" : ""}>
+//                 ${m < 60 ? `${m} ${t("minutes")}` : `${Math.floor(m/60)} ${m >= 120 ? t("hours") : t("hour")}${m % 60 ? ` ${m % 60} ${t("minutes")}` : ""}`}
+//               </option>
+//             `).join("")}
+//           </select>
+//         </div>
+//       </div>
+//       <div class="field">
+//         <label>${t("remindMe")}</label>
+//         <select id="f-reminder">
+//           <option value="none" ${draft.reminder === "none" ? "selected" : ""}>${t("noReminder")}</option>
+//           <option value="30m" ${(!draft.reminder || draft.reminder === "30m") ? "selected" : ""}>30 ${t("minutes")}</option>
+//           <option value="1h" ${draft.reminder === "1h" ? "selected" : ""}>1 ${t("hour")}</option>
+//           <option value="6h" ${draft.reminder === "6h" ? "selected" : ""}>6 ${t("hours")}</option>
+//           <option value="12h" ${draft.reminder === "12h" ? "selected" : ""}>12 ${t("hours")}</option>
+//           <option value="1d" ${draft.reminder === "1d" ? "selected" : ""}>1 ${t("hours") === "hours" ? "day" : t("hours")}</option>
+//           <option value="1w" ${draft.reminder === "1w" ? "selected" : ""}>1 week</option>
+//           <option value="1mo" ${draft.reminder === "1mo" ? "selected" : ""}>1 month</option>
+//         </select>
+//       </div>
+//       <div class="field"><label>${t("repeats")}</label>
+//         <select id="f-recur">
+//           <option value="none" ${draft.recurrence==="none"?"selected":""}>${t("doesntRepeat")}</option>
+//           <option value="weekly" ${draft.recurrence==="weekly"?"selected":""}>${t("weekly")}</option>
+//           <option value="fortnightly" ${draft.recurrence==="fortnightly"?"selected":""}>${t("fortnightly")}</option>
+//         </select>
+//       </div>
+//       <div class="togglerow" id="f-mandatoryrow" style="${draft.kind==="notification"?"display:none;":""}"><span>${t("mandatory")}</span><input type="checkbox" id="f-mandatory" ${draft.mandatory?"checked":""} /></div>
+//       <div class="togglerow" id="f-moneyrow" style="${draft.kind==="notification"?"display:none;border-bottom:none;":"border-bottom:none;"}"><span>${t("earnsMoney")}</span><input type="checkbox" id="f-money" ${draft.earnsMoney?"checked":""} /></div>
+//       <div class="sheetactions">
+//         ${isEdit ? `<button class="btn danger" id="f-delete">${t("delete")}</button>` : ""}
+//         <button class="btn ghost" id="f-cancel">${t("cancel")}</button>
+//         <button class="btn primary" id="f-save">${isEdit?t("save"):t("add")}</button>
+//       </div>
+//     </div>
+//   `;
+//   document.body.appendChild(overlay);
+
+//   let chosenCat = draft.categoryId;
+
+//   function attachCatChipHandlers() {
+//     overlay.querySelectorAll("[data-cat]").forEach(chip=>{
+//       chip.addEventListener("click", ()=>{
+//         chosenCat = chip.dataset.cat;
+//         overlay.querySelectorAll("[data-cat]").forEach(c=>c.classList.remove("selected"));
+//         chip.classList.add("selected");
+//         const cat = categoryOf(chosenCat);
+//         overlay.querySelector("#f-money").checked = !!cat.earnsDefault;
+//       });
+//     });
+//   }
+//   attachCatChipHandlers();
+//   let selectedKind = draft.kind === "notification" ? "notification" : "event";
+//   overlay.querySelectorAll(".kind-tab").forEach(tab => {
+//     tab.addEventListener("click", () => {
+//       selectedKind = tab.dataset.kind;
+//       overlay.querySelectorAll(".kind-tab").forEach(x => x.classList.toggle("active", x === tab));
+//       const isNotif = selectedKind === "notification";
+//       overlay.querySelector("#f-endtime-field").style.display = isNotif ? "none" : "";
+//       overlay.querySelector("#f-bufferrow").style.display = isNotif ? "none" : "";
+//       overlay.querySelector("#f-mandatoryrow").style.display = isNotif ? "none" : "";
+//       overlay.querySelector("#f-moneyrow").style.display = isNotif ? "none" : "";
+//     });
+//   });
+
+//   const alldayCheckbox = overlay.querySelector("#f-allday");
+//   const timeRow = overlay.querySelector("#f-timerow");
+//   const bufferRow = overlay.querySelector("#f-bufferrow");
+//   const alldayDateRow = overlay.querySelector("#f-allday-daterow");
+//   alldayCheckbox.addEventListener("change", () => {
+//     const isAllDay = alldayCheckbox.checked;
+//     timeRow.style.display = isAllDay ? "none" : "";
+//     bufferRow.style.display = isAllDay ? "none" : "";
+//     alldayDateRow.style.display = isAllDay ? "" : "none";
+//   });
+
+//   overlay.querySelector("#manageCatsBtn").addEventListener("click", () => {
+//     openCategoryManager(() => {
+//       if (!categories.find(c => c.id === chosenCat)) chosenCat = categories[0].id;
+//       const catsContainer = overlay.querySelector("#f-cats");
+//       catsContainer.innerHTML = categories.map(c=>`<div class="chip ${c.id===chosenCat?"selected":""}" data-cat="${c.id}"><span class="swatch" style="background:${c.color}"></span>${c.name}</div>`).join("");
+//       attachCatChipHandlers();
+//     });
+//   });
+
+//   overlay.querySelector("#f-cancel").addEventListener("click", ()=> overlay.remove());
+//   overlay.addEventListener("click", e=>{ if (e.target===overlay) overlay.remove(); });
+
+//   if (isEdit) {
+//     overlay.querySelector("#f-delete").addEventListener("click", ()=>{
+//       if (getRecurrenceDays(draft) > 0) {
+//         openDeleteChoice(draft, overlay, occurrenceDateISO || draft.dateISO);
+//       } else {
+//         const deletedEvent = draft;
+//         events = events.filter(e=>e.id!==draft.id);
+//         save(); overlay.remove(); render();
+//         showUndoSnackbar(`Deleted "${deletedEvent.title}"`, () => { events.push(deletedEvent); save(); render(); });
+//       }
+//     });
+//   }
+
+//   overlay.querySelector("#f-save").addEventListener("click", ()=>{
+//     const isAllDay = overlay.querySelector("#f-allday").checked;
+//     let startMin = 0, duration = 0, bufferBefore = 0, bufferAfter = 0;
+//     let dateISO = overlay.querySelector("#f-date").value;
+//     let endDateISO = null;
+
+//     const isNotification = !isEdit ? (selectedKind === "notification") : (draft.kind === "notification");
+
+//     if (isNotification && !isAllDay) {
+//       const [hh,mm] = overlay.querySelector("#f-time").value.split(":").map(Number);
+//       startMin = hh*60+mm;
+//       duration = 1;
+//       bufferBefore = 0;
+//       bufferAfter = 0;
+//     } else if (!isAllDay) {
+//       const [hh,mm] = overlay.querySelector("#f-time").value.split(":").map(Number);
+//       const [ehh,emm] = overlay.querySelector("#f-endtime").value.split(":").map(Number);
+//       startMin = hh*60+mm;
+//       let endMin = ehh*60+emm;
+//       if (endMin <= startMin) {
+//         const crossesMidnight = confirm("End time is before start time — does this event go past midnight into the next day? Cancel if that's a mistake.");
+//         if (!crossesMidnight) { endMin = startMin + 30; }
+//         else { endMin += 24*60; }
+//       }
+//       duration = Math.max(5, Math.min(endMin - startMin, 18*60));
+//       bufferBefore = parseInt(overlay.querySelector("#f-bufbefore").value,10) || 0;
+//       bufferAfter = parseInt(overlay.querySelector("#f-bufafter").value,10) || 0;
+//     } else {
+//       dateISO = overlay.querySelector("#f-alldaystart").value;
+//       endDateISO = overlay.querySelector("#f-alldayend").value;
+//       if (endDateISO < dateISO) endDateISO = dateISO; // guard against end before start
+//     }
+
+//     const updated = {
+//       ...draft,
+//       kind: isNotification ? "notification" : "event",
+//       title: overlay.querySelector("#f-title").value.trim() || "Untitled",
+//       dateISO: dateISO,
+//       endDateISO: isAllDay ? endDateISO : null,
+//       allDay: isAllDay,
+//       start: startMin,
+//       duration: duration,
+//       categoryId: chosenCat,
+//       bufferBefore: bufferBefore,
+//       bufferAfter: bufferAfter,
+//       recurrence: overlay.querySelector("#f-recur").value,
+//       reminder: overlay.querySelector("#f-reminder").value,
+//       mandatory: isNotification ? true : overlay.querySelector("#f-mandatory").checked,
+//       earnsMoney: isNotification ? false : overlay.querySelector("#f-money").checked,
+//       notes: overlay.querySelector("#f-notes") ? overlay.querySelector("#f-notes").value.trim() : (draft.notes || "")
+//     };
+
+//     if (isEdit && getRecurrenceDays(draft) > 0) {
+//       openEditChoice(draft, updated, overlay, occurrenceDateISO || draft.dateISO);
+//       return;
+//     }
+
+//     if (isEdit) {
+//       events = events.map(e=> e.id===updated.id ? updated : e);
+//     } else {
+//       events.push(updated);
+//     }
+//     save(); overlay.remove();
+//     selectedDate = startOfDay(new Date(updated.dateISO));
+//     weekStart = startOfWeek(selectedDate);
+//     view = "day";
+//     render();
+//     // const qi = document.getElementById("quickinput"); if (qi) qi.value = "";
+//   });
+// }
+
 function openSheet(ev, isNew=false, occurrenceDateISO=null) {
   const isEdit = !isNew && ev && events.includes(ev);
   const draft = isEdit ? ev : (ev || {
@@ -2087,11 +2318,16 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
     dateISO: iso(selectedDate), start: roundToNext30(), duration:60,
     bufferBefore:0,
     bufferAfter:0,
-    reminder:"30m",
+    reminder:"none",
     mandatory:true,
     earnsMoney:false,
     recurrence:"none"
   });
+
+  const hasBuffer = (draft.bufferBefore > 0) || (draft.bufferAfter > 0);
+  const hasReminder = draft.reminder && draft.reminder !== "none";
+  const hasRepeat = getRecurrenceDays(draft) > 0;
+  const hasTimeSet = draft.start > 0;
 
   const overlay = document.createElement("div");
   overlay.className = "overlay";
@@ -2105,15 +2341,25 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       </div>` : ""}
       <div class="field"><label>${t("titleLabel")}</label><input type="text" id="f-title" value="${escapeHtml(draft.title)}" /></div>
       <div class="field"><label>${t("dateLabel")}</label><input type="date" id="f-date" value="${draft.dateISO}" /></div>
-      <div class="togglerow" style="border-bottom:none"><span>${t("allDay")}</span><input type="checkbox" id="f-allday" ${draft.allDay?"checked":""} /></div>
+
+      <div class="togglerow"><span>${t("allDay")}</span><label class="switch"><input type="checkbox" id="f-allday" ${draft.allDay?"checked":""} /><span class="switch-track"></span></label></div>
+
+      <div class="togglerow" id="f-notiftime-row" style="display:none;">
+        <span>Set a time</span>
+        <label class="switch"><input type="checkbox" id="f-notiftime-toggle" ${hasTimeSet?"checked":""} /><span class="switch-track"></span></label>
+      </div>
+
       <div class="row2" id="f-timerow" style="${draft.allDay?"display:none;":""}">
-        <div class="field"><label>${t("startTime")}</label><input type="time" id="f-time" value="${pad2(Math.floor(draft.start/60))}:${pad2(draft.start%60)}" /></div>
+        <div class="field" id="f-time-field"><label>${t("startTime")}</label><input type="time" id="f-time" value="${pad2(Math.floor(draft.start/60))}:${pad2(draft.start%60)}" /></div>
         <div class="field" id="f-endtime-field" style="${draft.kind==="notification"?"display:none;":""}"><label>${t("endTime")}</label><input type="time" id="f-endtime" value="${pad2(Math.floor(((draft.start+draft.duration)%1440)/60))}:${pad2((draft.start+draft.duration)%60)}" /></div>
       </div>
+      <div class="field" id="f-notiftime-hint" style="display:none; font-size:0.78rem; color:var(--ink-soft); margin-top:-6px;">Fires at the start of the day (12:00 AM)</div>
+
       <div class="row2" id="f-allday-daterow" style="${draft.allDay?"":"display:none;"}">
         <div class="field"><label>${t("startDay")}</label><input type="date" id="f-alldaystart" value="${draft.dateISO}" /></div>
         <div class="field"><label>${t("endDay")}</label><input type="date" id="f-alldayend" value="${draft.endDateISO || draft.dateISO}" /></div>
       </div>
+
       <div class="field">
         <label style="display:flex; align-items:center; justify-content:space-between;">
           <span>${t("category")}</span>
@@ -2123,7 +2369,12 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
           ${categories.map(c=>`<div class="chip ${c.id===draft.categoryId?"selected":""}" data-cat="${c.id}"><span class="swatch" style="background:${c.color}"></span>${c.name}</div>`).join("")}
         </div>
       </div>
-            <div class="row2" id="f-bufferrow" style="${(draft.allDay||draft.kind==="notification")?"display:none;":""}">
+
+      <div class="togglerow" id="f-buffer-toggle-row" style="${draft.kind==="notification"?"display:none;":""}">
+        <span>Buffer</span>
+        <label class="switch"><input type="checkbox" id="f-buffer-toggle" ${hasBuffer?"checked":""} /><span class="switch-track"></span></label>
+      </div>
+      <div class="row2" id="f-bufferrow" style="${(draft.allDay||draft.kind==="notification"||!hasBuffer)?"display:none;":""}">
         <div class="field">
           <label>${t("bufferBefore")}</label>
           <select id="f-bufbefore">
@@ -2134,7 +2385,6 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
             `).join("")}
           </select>
         </div>
-
         <div class="field">
           <label>${t("bufferAfter")}</label>
           <select id="f-bufafter">
@@ -2146,28 +2396,37 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
           </select>
         </div>
       </div>
-      <div class="field">
-        <label>${t("remindMe")}</label>
+
+      <div class="togglerow">
+        <span>${t("remindMe")}</span>
+        <label class="switch"><input type="checkbox" id="f-reminder-toggle" ${hasReminder?"checked":""} /><span class="switch-track"></span></label>
+      </div>
+      <div class="field" id="f-reminder-panel" style="${hasReminder?"":"display:none;"}">
         <select id="f-reminder">
-          <option value="none" ${draft.reminder === "none" ? "selected" : ""}>${t("noReminder")}</option>
-          <option value="30m" ${(!draft.reminder || draft.reminder === "30m") ? "selected" : ""}>30 ${t("minutes")}</option>
+          <option value="30m" ${(!draft.reminder || draft.reminder === "30m" || draft.reminder === "none") ? "selected" : ""}>30 ${t("minutes")}</option>
           <option value="1h" ${draft.reminder === "1h" ? "selected" : ""}>1 ${t("hour")}</option>
           <option value="6h" ${draft.reminder === "6h" ? "selected" : ""}>6 ${t("hours")}</option>
           <option value="12h" ${draft.reminder === "12h" ? "selected" : ""}>12 ${t("hours")}</option>
-          <option value="1d" ${draft.reminder === "1d" ? "selected" : ""}>1 ${t("hours") === "hours" ? "day" : t("hours")}</option>
+          <option value="1d" ${draft.reminder === "1d" ? "selected" : ""}>1 day</option>
           <option value="1w" ${draft.reminder === "1w" ? "selected" : ""}>1 week</option>
           <option value="1mo" ${draft.reminder === "1mo" ? "selected" : ""}>1 month</option>
         </select>
       </div>
-      <div class="field"><label>${t("repeats")}</label>
+
+      <div class="togglerow">
+        <span>${t("repeats")}</span>
+        <label class="switch"><input type="checkbox" id="f-repeat-toggle" ${hasRepeat?"checked":""} /><span class="switch-track"></span></label>
+      </div>
+      <div class="field" id="f-repeat-panel" style="${hasRepeat?"":"display:none;"}">
         <select id="f-recur">
-          <option value="none" ${draft.recurrence==="none"?"selected":""}>${t("doesntRepeat")}</option>
-          <option value="weekly" ${draft.recurrence==="weekly"?"selected":""}>${t("weekly")}</option>
+          <option value="weekly" ${draft.recurrence!=="fortnightly"?"selected":""}>${t("weekly")}</option>
           <option value="fortnightly" ${draft.recurrence==="fortnightly"?"selected":""}>${t("fortnightly")}</option>
         </select>
       </div>
-      <div class="togglerow" id="f-mandatoryrow" style="${draft.kind==="notification"?"display:none;":""}"><span>${t("mandatory")}</span><input type="checkbox" id="f-mandatory" ${draft.mandatory?"checked":""} /></div>
-      <div class="togglerow" id="f-moneyrow" style="${draft.kind==="notification"?"display:none;border-bottom:none;":"border-bottom:none;"}"><span>${t("earnsMoney")}</span><input type="checkbox" id="f-money" ${draft.earnsMoney?"checked":""} /></div>
+
+      <div class="togglerow" id="f-mandatoryrow" style="${draft.kind==="notification"?"display:none;":""}"><span>${t("mandatory")}</span><label class="switch"><input type="checkbox" id="f-mandatory" ${draft.mandatory?"checked":""} /><span class="switch-track"></span></label></div>
+      <div class="togglerow" id="f-moneyrow" style="${draft.kind==="notification"?"display:none;border-bottom:none;":"border-bottom:none;"}"><span>${t("earnsMoney")}</span><label class="switch"><input type="checkbox" id="f-money" ${draft.earnsMoney?"checked":""} /><span class="switch-track"></span></label></div>
+
       <div class="sheetactions">
         ${isEdit ? `<button class="btn danger" id="f-delete">${t("delete")}</button>` : ""}
         <button class="btn ghost" id="f-cancel">${t("cancel")}</button>
@@ -2191,28 +2450,60 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
     });
   }
   attachCatChipHandlers();
+
   let selectedKind = draft.kind === "notification" ? "notification" : "event";
+
+  function applyKindVisibility() {
+    const isNotif = selectedKind === "notification";
+    overlay.querySelector("#f-notiftime-row").style.display = isNotif ? "" : "none";
+    overlay.querySelector("#f-endtime-field").style.display = isNotif ? "none" : "";
+    overlay.querySelector("#f-buffer-toggle-row").style.display = isNotif ? "none" : "";
+    overlay.querySelector("#f-bufferrow").style.display = "none";
+    overlay.querySelector("#f-buffer-toggle").checked = false;
+    overlay.querySelector("#f-mandatoryrow").style.display = isNotif ? "none" : "";
+    overlay.querySelector("#f-moneyrow").style.display = isNotif ? "none" : "";
+
+    if (isNotif) {
+      const timeOn = overlay.querySelector("#f-notiftime-toggle").checked;
+      overlay.querySelector("#f-time-field").style.display = timeOn ? "" : "none";
+      overlay.querySelector("#f-notiftime-hint").style.display = timeOn ? "none" : "";
+    } else {
+      overlay.querySelector("#f-time-field").style.display = "";
+      overlay.querySelector("#f-notiftime-hint").style.display = "none";
+    }
+  }
+  applyKindVisibility();
+
   overlay.querySelectorAll(".kind-tab").forEach(tab => {
     tab.addEventListener("click", () => {
       selectedKind = tab.dataset.kind;
       overlay.querySelectorAll(".kind-tab").forEach(x => x.classList.toggle("active", x === tab));
-      const isNotif = selectedKind === "notification";
-      overlay.querySelector("#f-endtime-field").style.display = isNotif ? "none" : "";
-      overlay.querySelector("#f-bufferrow").style.display = isNotif ? "none" : "";
-      overlay.querySelector("#f-mandatoryrow").style.display = isNotif ? "none" : "";
-      overlay.querySelector("#f-moneyrow").style.display = isNotif ? "none" : "";
+      applyKindVisibility();
     });
   });
 
+  overlay.querySelector("#f-notiftime-toggle").addEventListener("change", applyKindVisibility);
+
   const alldayCheckbox = overlay.querySelector("#f-allday");
   const timeRow = overlay.querySelector("#f-timerow");
-  const bufferRow = overlay.querySelector("#f-bufferrow");
   const alldayDateRow = overlay.querySelector("#f-allday-daterow");
   alldayCheckbox.addEventListener("change", () => {
     const isAllDay = alldayCheckbox.checked;
     timeRow.style.display = isAllDay ? "none" : "";
-    bufferRow.style.display = isAllDay ? "none" : "";
     alldayDateRow.style.display = isAllDay ? "" : "none";
+    if (isAllDay) overlay.querySelector("#f-bufferrow").style.display = "none";
+  });
+
+  overlay.querySelector("#f-buffer-toggle").addEventListener("change", (e) => {
+    overlay.querySelector("#f-bufferrow").style.display = (e.target.checked && !alldayCheckbox.checked) ? "" : "none";
+  });
+
+  overlay.querySelector("#f-reminder-toggle").addEventListener("change", (e) => {
+    overlay.querySelector("#f-reminder-panel").style.display = e.target.checked ? "" : "none";
+  });
+
+  overlay.querySelector("#f-repeat-toggle").addEventListener("change", (e) => {
+    overlay.querySelector("#f-repeat-panel").style.display = e.target.checked ? "" : "none";
   });
 
   overlay.querySelector("#manageCatsBtn").addEventListener("click", () => {
@@ -2249,8 +2540,13 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
     const isNotification = !isEdit ? (selectedKind === "notification") : (draft.kind === "notification");
 
     if (isNotification && !isAllDay) {
-      const [hh,mm] = overlay.querySelector("#f-time").value.split(":").map(Number);
-      startMin = hh*60+mm;
+      const timeOn = overlay.querySelector("#f-notiftime-toggle").checked;
+      if (timeOn) {
+        const [hh,mm] = overlay.querySelector("#f-time").value.split(":").map(Number);
+        startMin = hh*60+mm;
+      } else {
+        startMin = 0;
+      }
       duration = 1;
       bufferBefore = 0;
       bufferAfter = 0;
@@ -2260,56 +2556,7 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       startMin = hh*60+mm;
       let endMin = ehh*60+emm;
       if (endMin <= startMin) {
-        const crossesMidnight = confirm("End time is before start time — does this event go past midnight into the next day? Cancel if that's a mistake.");
-        if (!crossesMidnight) { endMin = startMin + 30; }
-        else { endMin += 24*60; }
-      }
-      duration = Math.max(5, Math.min(endMin - startMin, 18*60));
-      bufferBefore = parseInt(overlay.querySelector("#f-bufbefore").value,10) || 0;
-      bufferAfter = parseInt(overlay.querySelector("#f-bufafter").value,10) || 0;
-    } else {
-      dateISO = overlay.querySelector("#f-alldaystart").value;
-      endDateISO = overlay.querySelector("#f-alldayend").value;
-      if (endDateISO < dateISO) endDateISO = dateISO; // guard against end before start
-    }
-
-    const updated = {
-      ...draft,
-      kind: isNotification ? "notification" : "event",
-      title: overlay.querySelector("#f-title").value.trim() || "Untitled",
-      dateISO: dateISO,
-      endDateISO: isAllDay ? endDateISO : null,
-      allDay: isAllDay,
-      start: startMin,
-      duration: duration,
-      categoryId: chosenCat,
-      bufferBefore: bufferBefore,
-      bufferAfter: bufferAfter,
-      recurrence: overlay.querySelector("#f-recur").value,
-      reminder: overlay.querySelector("#f-reminder").value,
-      mandatory: isNotification ? true : overlay.querySelector("#f-mandatory").checked,
-      earnsMoney: isNotification ? false : overlay.querySelector("#f-money").checked,
-      notes: overlay.querySelector("#f-notes") ? overlay.querySelector("#f-notes").value.trim() : (draft.notes || "")
-    };
-
-    if (isEdit && getRecurrenceDays(draft) > 0) {
-      openEditChoice(draft, updated, overlay, occurrenceDateISO || draft.dateISO);
-      return;
-    }
-
-    if (isEdit) {
-      events = events.map(e=> e.id===updated.id ? updated : e);
-    } else {
-      events.push(updated);
-    }
-    save(); overlay.remove();
-    selectedDate = startOfDay(new Date(updated.dateISO));
-    weekStart = startOfWeek(selectedDate);
-    view = "day";
-    render();
-    // const qi = document.getElementById("quickinput"); if (qi) qi.value = "";
-  });
-}
+        const crossesMidnight = confirm("End time
 
 /* ---------- Boot ---------- */
 
