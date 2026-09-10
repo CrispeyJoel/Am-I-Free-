@@ -1113,7 +1113,7 @@ function setupDelegatedHandlers() {
     const actBtn = e.target.closest("[data-act]");
     if (actBtn) {
       const act = actBtn.dataset.act;
-      if (act === "today") { weekStart = startOfWeek(new Date()); selectedDate = startOfDay(new Date()); monthCursor = startOfMonth(new Date()); render(); }
+      if (act === "today") { weekStart = startOfWeek(new Date()); selectedDate = startOfDay(new Date()); monthCursor = startOfMonth(new Date()); render(); window.scrollTo(0, 0); }
       else if (act === "prev") { view === "month" ? shiftMonth(-1) : shiftWeek(-1); }
       else if (act === "next") { view === "month" ? shiftMonth(1) : shiftWeek(1); }
       else if (act === "settings") { openSettingsPanel(); }
@@ -1137,6 +1137,7 @@ function setupDelegatedHandlers() {
     if (gotoBtn) {
       const d = dateFromISO(gotoBtn.dataset.goto);
       selectedDate = startOfDay(d); weekStart = startOfWeek(selectedDate); view = "day"; render();
+      window.scrollTo(0, 0);
       return;
     }
 
