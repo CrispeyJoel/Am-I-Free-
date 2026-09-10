@@ -2556,7 +2556,59 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       startMin = hh*60+mm;
       let endMin = ehh*60+emm;
       if (endMin <= startMin) {
-        const crossesMidnight = confirm("End time
+        const crossesMidnight = confirm("End time is before start time — does this event go past midnight into the next day? Cancel if that's a mistake.");
+        if (!crossesMidnight) { endMin = startMin + 30; }
+        else { endMin += 24*60; }
+      }
+      duration = Math.max(5, Math.min(endMin - startMin, 18*60));
+      const bufferOn = overlay.querySelector("#f-buffer-toggle").checked;
+      bufferBefore = bufferOn ? (parseInt(overlay.querySelector("#f-bufbefore").value,10) || 0) : 0;
+      bufferAfter = bufferOn ? (parseInt(overlay.querySelector("#f-bufafter").value,10) || 0) : 0;
+    } else {
+      dateISO = overlay.querySelector("#f-alldaystart").value;
+      endDateISO = overlay.querySelector("#f-alldayend").value;
+      if (endDateISO < dateISO) endDateISO = dateISO;
+    }
+
+    const reminderOn = overlay.querySelector("#f-reminder-toggle").checked;
+    const repeatOn = overlay.querySelector("#f-repeat-toggle").checked;
+
+    const updated = {
+      ...draft,
+      kind: isNotification ? "notification" : "event",
+      title: overlay.querySelector("#f-title").value.trim() || "Untitled",
+      dateISO: dateISO,
+      endDateISO: isAllDay ? endDateISO : null,
+      allDay: isAllDay,
+      start: startMin,
+      duration: duration,
+      categoryId: chosenCat,
+      bufferBefore: bufferBefore,
+      bufferAfter: bufferAfter,
+      recurrence: repeatOn ? overlay.querySelector("#f-recur").value : "none",
+      reminder: reminderOn ? overlay.querySelector("#f-reminder").value : "none",
+      mandatory: isNotification ? true : overlay.querySelector("#f-mandatory").checked,
+      earnsMoney: isNotification ? false : overlay.querySelector("#f-money").checked,
+      notes: overlay.querySelector("#f-notes") ? overlay.querySelector("#f-notes").value.trim() : (draft.notes || "")
+    };
+
+    if (isEdit && getRecurrenceDays(draft) > 0) {
+      openEditChoice(draft, updated, overlay, occurrenceDateISO || draft.dateISO);
+      return;
+    }
+
+    if (isEdit) {
+      events = events.map(e=> e.id===updated.id ? updated : e);
+    } else {
+      events.push(updated);
+    }
+    save(); overlay.remove();
+    selectedDate = startOfDay(new Date(updated.dateISO));
+    weekStart = startOfWeek(selectedDate);
+    view = "day";
+    render();
+  });
+}
 
 /* ---------- Boot ---------- */
 
