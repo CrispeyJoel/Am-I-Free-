@@ -2345,7 +2345,7 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       <div class="field"><label>${t("titleLabel")}</label><input type="text" id="f-title" value="${escapeHtml(draft.title)}" /></div>
       <div class="field"><label>${t("dateLabel")}</label><input type="date" id="f-date" value="${draft.dateISO}" /></div>
 
-      <div class="togglerow"><span>${t("allDay")}</span><label class="switch"><input type="checkbox" id="f-allday" ${draft.allDay?"checked":""} /><span class="switch-track"></span></label></div>
+      <div class="togglerow" id="f-allday-row"><span>${t("allDay")}</span><label class="switch"><input type="checkbox" id="f-allday" ${draft.allDay?"checked":""} /><span class="switch-track"></span></label></div>
 
       <div class="togglerow" id="f-notiftime-row" style="display:none;">
         <span>Set a time</span>
@@ -2363,7 +2363,7 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
         <div class="field"><label>${t("endDay")}</label><input type="date" id="f-alldayend" value="${draft.endDateISO || draft.dateISO}" /></div>
       </div>
 
-      <div class="field">
+      <div class="field" id="f-category-field">
         <label style="display:flex; align-items:center; justify-content:space-between;">
           <span>${t("category")}</span>
           <button type="button" id="manageCatsBtn" style="border:none; background:none; text-decoration:underline; cursor:pointer; font-size:0.75rem; color:var(--ink-soft); padding:0;">${t("editCategories")}</button>
@@ -2400,7 +2400,7 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
         </div>
       </div>
 
-      <div class="togglerow">
+      <div class="togglerow" id="f-reminder-toggle-row">
         <span>${t("remindMe")}</span>
         <label class="switch"><input type="checkbox" id="f-reminder-toggle" ${hasReminder?"checked":""} /><span class="switch-track"></span></label>
       </div>
@@ -2465,6 +2465,16 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
     overlay.querySelector("#f-buffer-toggle").checked = false;
     overlay.querySelector("#f-mandatoryrow").style.display = isNotif ? "none" : "";
     overlay.querySelector("#f-moneyrow").style.display = isNotif ? "none" : "";
+    overlay.querySelector("#f-allday-row").style.display = isNotif ? "none" : "";
+    overlay.querySelector("#f-category-field").style.display = isNotif ? "none" : "";
+    overlay.querySelector("#f-reminder-toggle-row").style.display = isNotif ? "none" : "";
+    overlay.querySelector("#f-reminder-panel").style.display = "none";
+    overlay.querySelector("#f-reminder-toggle").checked = false;
+    if (isNotif) {
+      overlay.querySelector("#f-allday").checked = false;
+      overlay.querySelector("#f-timerow").style.display = "";
+      overlay.querySelector("#f-allday-daterow").style.display = "none";
+    }
 
     if (isNotif) {
       const timeOn = overlay.querySelector("#f-notiftime-toggle").checked;
@@ -2542,7 +2552,7 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
 
     const isNotification = !isEdit ? (selectedKind === "notification") : (draft.kind === "notification");
 
-    if (isNotification && !isAllDay) {
+    if (isNotification) {
       const timeOn = overlay.querySelector("#f-notiftime-toggle").checked;
       if (timeOn) {
         const [hh,mm] = overlay.querySelector("#f-time").value.split(":").map(Number);
@@ -2573,7 +2583,7 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       if (endDateISO < dateISO) endDateISO = dateISO;
     }
 
-    const reminderOn = overlay.querySelector("#f-reminder-toggle").checked;
+    const reminderOn = isNotification ? false : overlay.querySelector("#f-reminder-toggle").checked;
     const repeatOn = overlay.querySelector("#f-repeat-toggle").checked;
 
     const updated = {
@@ -2582,10 +2592,10 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       title: overlay.querySelector("#f-title").value.trim() || "Untitled",
       dateISO: dateISO,
       endDateISO: isAllDay ? endDateISO : null,
-      allDay: isAllDay,
+      allDay: isNotification ? false : isAllDay,
       start: startMin,
       duration: duration,
-      categoryId: chosenCat,
+      categoryId: isNotification ? "none" : chosenCat,
       bufferBefore: bufferBefore,
       bufferAfter: bufferAfter,
       recurrence: repeatOn ? overlay.querySelector("#f-recur").value : "none",
