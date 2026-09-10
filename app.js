@@ -1122,7 +1122,13 @@ function setupDelegatedHandlers() {
     }
 
     const viewBtn = e.target.closest("[data-view]");
-    if (viewBtn) { view = viewBtn.dataset.view; render(); return; }
+    if (viewBtn) {
+      const targetView = viewBtn.dataset.view;
+      if (targetView === "month") monthCursor = startOfMonth(selectedDate);
+      view = targetView;
+      render();
+      return;
+    }
 
     const jumpBtn = e.target.closest("[data-jump]");
     if (jumpBtn) {
