@@ -246,6 +246,34 @@ button {
   width: 100%;
 }
 
+.kind-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.kind-tab {
+  flex: 1;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink-soft);
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.kind-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.event.notif-kind {
+  border: 2px dashed rgba(255,255,255,0.7);
+}
+.event.notif-kind .title::before {
+  content: "🔔 ";
+}
+
 .topbar-side-right {
   justify-content: flex-end;
 }

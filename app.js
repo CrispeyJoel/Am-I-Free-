@@ -257,7 +257,7 @@ function eventsOnDate(date) { return events.filter(ev => occursOn(ev, date)); }
 
 /* ---------- Free-time calc ---------- */
 function busyIntervals(date) {
-  return eventsOnDate(date).filter(ev => !ev.allDay).map(ev => ({
+  return eventsOnDate(date).filter(ev => !ev.allDay && ev.kind !== "notification").map(ev => ({
     start: ev.start - ev.bufferBefore,
     end: ev.start + ev.duration + ev.bufferAfter,
     ev
@@ -576,8 +576,9 @@ function renderDayCol(date) {
   for (const ev of timedEvs) {
     const cat = categoryOf(ev.categoryId);
     const isLove = cat.special === "love";
+    const isNotif = ev.kind === "notification";
     const top = (ev.start - DAY_START_MIN)/60*HOUR_PX;
-    const height = Math.max(ev.duration/60*HOUR_PX, 24);
+    const height = isNotif ? 24 : Math.max(ev.duration/60*HOUR_PX, 24);
     const bTop = (ev.start - ev.bufferBefore - DAY_START_MIN)/60*HOUR_PX;
     const bHeightBefore = ev.bufferBefore/60*HOUR_PX;
     const bTopAfter = (ev.start + ev.duration - DAY_START_MIN)/60*HOUR_PX;
@@ -601,7 +602,7 @@ function renderDayCol(date) {
       : `<div class="title">${escapeHtml(ev.title)}${ev.earnsMoney?`<span class="dollar">$</span>`:""}</div>
          <div class="meta">${minToLabel(ev.start)} · ${cat.name}</div>`;
 
-        blocks += `<div class="event ${isCompact?"compact":""} ${isLove?"love-cat":""} ${ev.mandatory?"":"optional"}" style="top:${top}px;height:${height}px;background:${cat.color};border-color:${cat.color};${positionStyle}" data-edit="${ev.id}" data-date="${iso(date)}">
+        blocks += `<div class="event ${isCompact?"compact":""} ${isLove?"love-cat":""} ${isNotif?"notif-kind":""} ${ev.mandatory?"":"optional"}" style="top:${top}px;height:${height}px;background:${cat.color};border-color:${cat.color};${positionStyle}" data-edit="${ev.id}" data-date="${iso(date)}">
       ${eventInner}
     </div>`;
   }
@@ -2091,12 +2092,17 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
   overlay.innerHTML = `
     <div class="sheet">
       <h2>${isEdit ? t("editEvent") : t("newEvent")}</h2>
+      ${!isEdit ? `
+      <div class="kind-tabs">
+        <button type="button" class="kind-tab ${draft.kind !== "notification" ? "active" : ""}" data-kind="event">Event</button>
+        <button type="button" class="kind-tab ${draft.kind === "notification" ? "active" : ""}" data-kind="notification">Notification</button>
+      </div>` : ""}
       <div class="field"><label>${t("titleLabel")}</label><input type="text" id="f-title" value="${escapeHtml(draft.title)}" /></div>
       <div class="field"><label>${t("dateLabel")}</label><input type="date" id="f-date" value="${draft.dateISO}" /></div>
       <div class="togglerow" style="border-bottom:none"><span>${t("allDay")}</span><input type="checkbox" id="f-allday" ${draft.allDay?"checked":""} /></div>
       <div class="row2" id="f-timerow" style="${draft.allDay?"display:none;":""}">
         <div class="field"><label>${t("startTime")}</label><input type="time" id="f-time" value="${pad2(Math.floor(draft.start/60))}:${pad2(draft.start%60)}" /></div>
-        <div class="field"><label>${t("endTime")}</label><input type="time" id="f-endtime" value="${pad2(Math.floor(((draft.start+draft.duration)%1440)/60))}:${pad2((draft.start+draft.duration)%60)}" /></div>
+        <div class="field" id="f-endtime-field" style="${draft.kind==="notification"?"display:none;":""}"><label>${t("endTime")}</label><input type="time" id="f-endtime" value="${pad2(Math.floor(((draft.start+draft.duration)%1440)/60))}:${pad2((draft.start+draft.duration)%60)}" /></div>
       </div>
       <div class="row2" id="f-allday-daterow" style="${draft.allDay?"":"display:none;"}">
         <div class="field"><label>${t("startDay")}</label><input type="date" id="f-alldaystart" value="${draft.dateISO}" /></div>
@@ -2111,7 +2117,7 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
           ${categories.map(c=>`<div class="chip ${c.id===draft.categoryId?"selected":""}" data-cat="${c.id}"><span class="swatch" style="background:${c.color}"></span>${c.name}</div>`).join("")}
         </div>
       </div>
-      <div class="row2" id="f-bufferrow" style="${draft.allDay?"display:none;":""}">
+            <div class="row2" id="f-bufferrow" style="${(draft.allDay||draft.kind==="notification")?"display:none;":""}">
         <div class="field">
           <label>${t("bufferBefore")}</label>
           <select id="f-bufbefore">
@@ -2154,8 +2160,8 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
           <option value="fortnightly" ${draft.recurrence==="fortnightly"?"selected":""}>${t("fortnightly")}</option>
         </select>
       </div>
-      <div class="togglerow"><span>${t("mandatory")}</span><input type="checkbox" id="f-mandatory" ${draft.mandatory?"checked":""} /></div>
-      <div class="togglerow" style="border-bottom:none"><span>${t("earnsMoney")}</span><input type="checkbox" id="f-money" ${draft.earnsMoney?"checked":""} /></div>
+      <div class="togglerow" id="f-mandatoryrow" style="${draft.kind==="notification"?"display:none;":""}"><span>${t("mandatory")}</span><input type="checkbox" id="f-mandatory" ${draft.mandatory?"checked":""} /></div>
+      <div class="togglerow" id="f-moneyrow" style="${draft.kind==="notification"?"display:none;border-bottom:none;":"border-bottom:none;"}"><span>${t("earnsMoney")}</span><input type="checkbox" id="f-money" ${draft.earnsMoney?"checked":""} /></div>
       <div class="sheetactions">
         ${isEdit ? `<button class="btn danger" id="f-delete">${t("delete")}</button>` : ""}
         <button class="btn ghost" id="f-cancel">${t("cancel")}</button>
@@ -2179,6 +2185,18 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
     });
   }
   attachCatChipHandlers();
+  let selectedKind = draft.kind === "notification" ? "notification" : "event";
+  overlay.querySelectorAll(".kind-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      selectedKind = tab.dataset.kind;
+      overlay.querySelectorAll(".kind-tab").forEach(x => x.classList.toggle("active", x === tab));
+      const isNotif = selectedKind === "notification";
+      overlay.querySelector("#f-endtime-field").style.display = isNotif ? "none" : "";
+      overlay.querySelector("#f-bufferrow").style.display = isNotif ? "none" : "";
+      overlay.querySelector("#f-mandatoryrow").style.display = isNotif ? "none" : "";
+      overlay.querySelector("#f-moneyrow").style.display = isNotif ? "none" : "";
+    });
+  });
 
   const alldayCheckbox = overlay.querySelector("#f-allday");
   const timeRow = overlay.querySelector("#f-timerow");
@@ -2222,13 +2240,25 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
     let dateISO = overlay.querySelector("#f-date").value;
     let endDateISO = null;
 
-    if (!isAllDay) {
+    const isNotification = !isEdit ? (selectedKind === "notification") : (draft.kind === "notification");
+
+    if (isNotification && !isAllDay) {
+      const [hh,mm] = overlay.querySelector("#f-time").value.split(":").map(Number);
+      startMin = hh*60+mm;
+      duration = 1;
+      bufferBefore = 0;
+      bufferAfter = 0;
+    } else if (!isAllDay) {
       const [hh,mm] = overlay.querySelector("#f-time").value.split(":").map(Number);
       const [ehh,emm] = overlay.querySelector("#f-endtime").value.split(":").map(Number);
       startMin = hh*60+mm;
       let endMin = ehh*60+emm;
-      if (endMin <= startMin) endMin += 24*60; // crosses midnight
-      duration = Math.max(5, endMin - startMin);
+      if (endMin <= startMin) {
+        const crossesMidnight = confirm("End time is before start time — does this event go past midnight into the next day? Cancel if that's a mistake.");
+        if (!crossesMidnight) { endMin = startMin + 30; }
+        else { endMin += 24*60; }
+      }
+      duration = Math.max(5, Math.min(endMin - startMin, 18*60));
       bufferBefore = parseInt(overlay.querySelector("#f-bufbefore").value,10) || 0;
       bufferAfter = parseInt(overlay.querySelector("#f-bufafter").value,10) || 0;
     } else {
@@ -2239,6 +2269,7 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
 
     const updated = {
       ...draft,
+      kind: isNotification ? "notification" : "event",
       title: overlay.querySelector("#f-title").value.trim() || "Untitled",
       dateISO: dateISO,
       endDateISO: isAllDay ? endDateISO : null,
@@ -2250,8 +2281,8 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       bufferAfter: bufferAfter,
       recurrence: overlay.querySelector("#f-recur").value,
       reminder: overlay.querySelector("#f-reminder").value,
-      mandatory: overlay.querySelector("#f-mandatory").checked,
-      earnsMoney: overlay.querySelector("#f-money").checked,
+      mandatory: isNotification ? true : overlay.querySelector("#f-mandatory").checked,
+      earnsMoney: isNotification ? false : overlay.querySelector("#f-money").checked,
       notes: overlay.querySelector("#f-notes") ? overlay.querySelector("#f-notes").value.trim() : (draft.notes || "")
     };
 
