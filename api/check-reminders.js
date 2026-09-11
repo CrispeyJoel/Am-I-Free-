@@ -33,6 +33,8 @@ const db = admin.firestore();
 function occursOn(ev, dateStr) {
   if (!ev.dateISO) return false;
 
+  if (ev.seriesEndISO && dateStr >= ev.seriesEndISO) return false;
+
   const anchorStr = ev.dateISO.split("T")[0];
   const anchor = DateTime.fromISO(anchorStr, { zone: "UTC" });
   const target = DateTime.fromISO(dateStr, { zone: "UTC" });
@@ -43,15 +45,20 @@ function occursOn(ev, dateStr) {
     return false;
   }
 
+  let matches;
   if (ev.recurrence === "weekly") {
-    return diff % 7 === 0;
+    matches = diff % 7 === 0;
+  } else if (ev.recurrence === "fortnightly") {
+    matches = diff % 14 === 0;
+  } else {
+    matches = diff === 0;
   }
 
-  if (ev.recurrence === "fortnightly") {
-    return diff % 14 === 0;
-  }
+  if (!matches) return false;
 
-  return diff === 0;
+  if (Array.isArray(ev.excludedDates) && ev.excludedDates.includes(dateStr)) return false;
+
+  return true;
 }
 
 // ------------------------------------------------------------
