@@ -105,7 +105,7 @@
 // });
 
 
-const CACHE = "actually-free-v10";
+const CACHE = "actually-free-v11";
 
 const ASSETS = [
   "./",
