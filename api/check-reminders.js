@@ -245,7 +245,7 @@ export default async function handler(req, res) {
 
               const title = ev.title || "Actually Free";
               const body = ev.kind === "notification"
-                ? (ev.start > 0 ? `Reminder — ${eventLocal.toFormat("h:mm a")}` : "Reminder")
+                ? (ev.start > 0 ? `Reminder - ${eventLocal.toFormat("h:mm a")}` : "Reminder")
                 : `Leave at ${leaveLocal.toFormat("h:mm a")} for ${eventLocal.toFormat("h:mm a")}.`;
 
               await admin.messaging().send({
