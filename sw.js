@@ -141,6 +141,22 @@ self.addEventListener("activate", event => {
   self.addEventListener("fetch", (e) => {
     const url = new URL(e.request.url);
 
+    // Vendor libraries from Google's CDN are version-pinned in their URL —
+    // safe to serve instantly from cache, never worth a network round-trip.
+    if (url.hostname === "www.gstatic.com") {
+      e.respondWith(
+        caches.match(e.request).then(cached => {
+          if (cached) return cached;
+          return fetch(e.request).then(response => {
+            const copy = response.clone();
+            caches.open(CACHE).then(cache => cache.put(e.request, copy));
+            return response;
+          });
+        })
+      );
+      return;
+    }
+
     if (
       e.request.method === "GET" &&
       (
