@@ -86,7 +86,14 @@ function getEventTimes(ev, occurrenceDateStr, timezone) {
 }
 
 function reminderDateTime(ev, occurrenceDateStr, timezone) {
-  const { leaveLocal } = getEventTimes(ev, occurrenceDateStr, timezone);
+  const { eventLocal, leaveLocal } = getEventTimes(ev, occurrenceDateStr, timezone);
+
+  // A notification IS the reminder — it fires at its own set time (or midnight
+  // if no time was set), not via the buffer-based lead-time system events use.
+  if (ev.kind === "notification") {
+    return eventLocal;
+  }
+
   const reminder = ev.reminder || "30m";
 
   switch (reminder) {
@@ -237,7 +244,9 @@ export default async function handler(req, res) {
               console.log("SENDING PUSH", ev.title);
 
               const title = ev.title || "Actually Free";
-              const body = `Leave at ${leaveLocal.toFormat("h:mm a")} for ${eventLocal.toFormat("h:mm a")}.`;
+              const body = ev.kind === "notification"
+                ? (ev.start > 0 ? `Reminder — ${eventLocal.toFormat("h:mm a")}` : "Reminder")
+                : `Leave at ${leaveLocal.toFormat("h:mm a")} for ${eventLocal.toFormat("h:mm a")}.`;
 
               await admin.messaging().send({
                 token: user.pushToken,
