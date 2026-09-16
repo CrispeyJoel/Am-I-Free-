@@ -653,7 +653,7 @@ function renderMonthBlock(monthDate) {
     const inMonth = d.getMonth()===monthDate.getMonth();
     const evs = eventsOnDate(d);
     const cats = [...new Set(evs.map(e=>e.categoryId))].slice(0,4);
-    body += `<button class="monthday ${sameDay(d,today)?"today":""} ${inMonth?"":"other"}" data-goto="${iso(d)}">
+    body += `<button class="monthday ${sameDay(d,today)?"today":""} ${sameDay(d,selectedDate)?"selected":""} ${inMonth?"":"other"}" data-selectday="${iso(d)}">
       <span>${d.getDate()}</span>
       <span class="dots">${cats.map(c=>`<span style="background:${categoryOf(c).color}"></span>`).join("")}</span>
     </button>`;
@@ -665,6 +665,46 @@ function renderMonthBlock(monthDate) {
   </div>`;
 }
 
+function renderMonthDayPanel(date) {
+  const dStr = iso(date);
+  const evs = eventsOnDate(date).sort((a, b) => {
+    if (a.allDay && !b.allDay) return -1;
+    if (!a.allDay && b.allDay) return 1;
+    return a.start - b.start;
+  });
+
+  const rowsHtml = evs.length
+    ? evs.map(ev => {
+        const cat = categoryOf(ev.categoryId);
+        const timeLabel = ev.allDay
+          ? (ev.endDateISO && ev.endDateISO !== ev.dateISO ? `${ev.dateISO} – ${ev.endDateISO}` : t("allDay"))
+          : `${minToLabel(ev.start)} – ${minToLabel(ev.start + ev.duration)}`;
+        return `<div class="agenda-row" data-id="${ev.id}">
+          <span class="agenda-dot" style="background:${cat.color}"></span>
+          <div class="agenda-info">
+            <div class="agenda-title">${escapeHtml(ev.title)}</div>
+            <div class="agenda-time">${timeLabel} · ${cat.name}</div>
+          </div>
+          <button type="button" class="agenda-delete" data-id="${ev.id}" title="Delete">✕</button>
+        </div>`;
+      }).join("")
+    : `<div style="padding:14px 0; text-align:center; color:var(--ink-soft); font-size:0.85rem;">No events on this day.</div>`;
+
+  return `<div id="monthDayPanel" class="month-day-panel" data-date="${dStr}">
+    <div class="month-day-panel-header">
+      <span class="month-day-panel-date">${date.toLocaleDateString(undefined,{weekday:"long", month:"short", day:"numeric"})}</span>
+      <button type="button" class="todaybtn" data-act="view-day">View day</button>
+    </div>
+    <div class="month-day-panel-list" id="monthDayPanelList">${rowsHtml}</div>
+  </div>`;
+}
+
+function refreshMonthDayPanel() {
+  if (view !== "month") return;
+  const panel = document.getElementById("monthDayPanel");
+  if (panel) panel.outerHTML = renderMonthDayPanel(selectedDate);
+}
+
 function renderMonth() {
   renderedMonthWindowStart = addMonths(monthCursor, -MONTH_WINDOW_BEFORE);
   currentMonthWindowLength = MONTH_WINDOW_TOTAL;
@@ -672,7 +712,9 @@ function renderMonth() {
   for (let i=0;i<MONTH_WINDOW_TOTAL;i++) {
     html += renderMonthBlock(addMonths(renderedMonthWindowStart, i));
   }
-  return html + `</div>`;
+  html += `</div>`;
+  html += renderMonthDayPanel(selectedDate);
+  return html;
 }
 
 function scrollToMonthCursor(smooth=false) {
@@ -1133,6 +1175,12 @@ function setupDelegatedHandlers() {
       else if (act === "next") { view === "month" ? shiftMonth(1) : shiftWeek(1); }
       else if (act === "settings") { openSettingsPanel(); }
       else if (act === "agenda") { openDayAgenda(selectedDate); }
+      else if (act === "view-day") {
+        weekStart = startOfWeek(selectedDate);
+        view = "day";
+        render();
+        window.scrollTo(0, 0);
+      }
       return;
     }
 
@@ -1154,11 +1202,36 @@ function setupDelegatedHandlers() {
       return;
     }
 
-    const gotoBtn = e.target.closest("[data-goto]");
-    if (gotoBtn) {
-      const d = dateFromISO(gotoBtn.dataset.goto);
-      selectedDate = startOfDay(d); weekStart = startOfWeek(selectedDate); view = "day"; render();
-      window.scrollTo(0, 0);
+    const monthPanelDelete = e.target.closest("#monthDayPanel .agenda-delete");
+    if (monthPanelDelete) {
+      const ev = events.find(x => x.id === monthPanelDelete.dataset.id);
+      if (ev) {
+        if (getRecurrenceDays(ev) > 0) {
+          openDeleteChoice(ev, null, iso(selectedDate));
+        } else if (confirm(`Delete "${ev.title}"?`)) {
+          const deletedEvent = ev;
+          events = events.filter(x => x.id !== ev.id);
+          save();
+          refreshMonthDayPanel();
+          showUndoSnackbar(`Deleted "${deletedEvent.title}"`, () => { events.push(deletedEvent); save(); refreshMonthDayPanel(); });
+        }
+      }
+      return;
+    }
+
+    const monthPanelRow = e.target.closest("#monthDayPanel .agenda-row");
+    if (monthPanelRow) {
+      const ev = events.find(x => x.id === monthPanelRow.dataset.id);
+      if (ev) openSheet(ev, false, iso(selectedDate));
+      return;
+    }
+
+    const selectDayBtn = e.target.closest("[data-selectday]");
+    if (selectDayBtn) {
+      selectedDate = startOfDay(dateFromISO(selectDayBtn.dataset.selectday));
+      document.querySelectorAll(".monthday.selected").forEach(el => el.classList.remove("selected"));
+      document.querySelectorAll(`[data-selectday="${iso(selectedDate)}"]`).forEach(el => el.classList.add("selected"));
+      refreshMonthDayPanel();
       return;
     }
 
