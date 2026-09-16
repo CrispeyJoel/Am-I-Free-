@@ -1760,13 +1760,23 @@ button {
 }
 
 
-.month-free-bubble {
+/* .month-free-bubble {
   background: var(--free-bg);
   color: var(--free-ink);
   font-size: 0.68rem;
   font-weight: 700;
   padding: 5px 10px;
   border-radius: 999px;
+  white-space: nowrap;
+} */
+
+.month-free-bubble {
+  background: yellow !important;
+  color: black !important;
+  font-size: 1.2rem !important;
+  font-weight: 900 !important;
+  padding: 10px !important;
+  border: 4px solid red !important;
   white-space: nowrap;
 }
 .month-free-bubble.busy {
