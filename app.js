@@ -506,6 +506,7 @@ function renderTopbar() {
         </div>
         <div class="weeklabel">${label}</div>
         <div class="topbar-side topbar-side-right">
+          ${renderMonthFreeBubble()}
           <button class="iconbtn" data-act="agenda" title="Day list">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="8" y1="6" x2="21" y2="6"/>
@@ -543,6 +544,15 @@ function renderTodayCorner() {
 function renderFreeBanner() {
   const st = freeStatusNow();
   return `<div class="freebanner ${st.busy?"busy":""}"><div class="dot"></div><div class="text">${st.text}</div></div>`;
+}
+
+function renderMonthFreeBubble() {
+  if (view !== "month") return "";
+  const st = freeStatusNow();
+  let label = st.text.replace(/<[^>]*>/g, "");
+  const dashIdx = label.indexOf(" - ");
+  if (dashIdx > -1) label = label.slice(0, dashIdx);
+  return `<span class="month-free-bubble ${st.busy?"busy":""}">${label}</span>`;
 }
 
 function renderDayPips() {
@@ -692,7 +702,7 @@ function renderMonthDayPanel(date) {
   return `<div id="monthDayPanel" class="month-day-panel" data-date="${dStr}">
     <div class="month-day-panel-header">
       <span class="month-day-panel-date">${date.toLocaleDateString(undefined,{weekday:"long", month:"short", day:"numeric"})}</span>
-      <button type="button" class="todaybtn" data-act="view-day">View day</button>
+      <button type="button" class="todaybtn viewday-dark" data-act="view-day">View day</button>
     </div>
     <div class="month-day-panel-list" id="monthDayPanelList">${rowsHtml}</div>
     <div class="month-day-panel-actions">
