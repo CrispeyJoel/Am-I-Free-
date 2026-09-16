@@ -32,28 +32,24 @@ const db = admin.firestore();
 
 function occursOn(ev, dateStr) {
   if (!ev.dateISO) return false;
-
   if (ev.seriesEndISO && dateStr >= ev.seriesEndISO) return false;
 
   const anchorStr = ev.dateISO.split("T")[0];
   const anchor = DateTime.fromISO(anchorStr, { zone: "UTC" });
   const target = DateTime.fromISO(dateStr, { zone: "UTC" });
-
   const diff = Math.round(target.diff(anchor, "days").days);
+  if (diff < 0) return false;
 
-  if (diff < 0) {
-    return false;
-  }
-
+  const DAY_INTERVALS = { daily:1, every2days:2, every3days:3, every4days:4, every5days:5, every6days:6, weekly:7, fortnightly:14 };
+  const rec = ev.recurrence || "none";
   let matches;
-  if (ev.recurrence === "weekly") {
-    matches = diff % 7 === 0;
-  } else if (ev.recurrence === "fortnightly") {
-    matches = diff % 14 === 0;
+  if (DAY_INTERVALS[rec]) {
+    matches = diff % DAY_INTERVALS[rec] === 0;
+  } else if (rec === "monthly") {
+    matches = target.day === anchor.day;
   } else {
     matches = diff === 0;
   }
-
   if (!matches) return false;
 
   if (Array.isArray(ev.excludedDates) && ev.excludedDates.includes(dateStr)) return false;

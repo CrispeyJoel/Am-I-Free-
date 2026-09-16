@@ -222,32 +222,36 @@ function dateFromISO(dateStr) {
   return new Date(y, m - 1, d);
 }
 
+const RECUR_DAY_MAP = { daily:1, every2days:2, every3days:3, every4days:4, every5days:5, every6days:6, weekly:7, fortnightly:14, monthly:30 };
+
 function getRecurrenceDays(ev) {
   if (Number.isFinite(ev.recurrenceDays)) return ev.recurrenceDays;
-  if (ev.recurrence === "weekly") return 7;
-  if (ev.recurrence === "fortnightly") return 14;
+  if (ev.recurrence && RECUR_DAY_MAP[ev.recurrence]) return RECUR_DAY_MAP[ev.recurrence];
   return 0;
 }
 
 function occursOn(ev, date) {
   const dStr = iso(date);
 
-  if (ev.seriesEndISO && dStr >= ev.seriesEndISO) return false;
-
   if (ev.allDay && ev.endDateISO) {
     return dStr >= ev.dateISO && dStr <= ev.endDateISO;
   }
+  if (ev.seriesEndISO && dStr >= ev.seriesEndISO) return false;
 
   const anchor = dateFromISO(ev.dateISO);
   const diff = dayDiff(date, anchor);
-
   if (diff < 0) return false;
 
+  const DAY_INTERVALS = { daily:1, every2days:2, every3days:3, every4days:4, every5days:5, every6days:6, weekly:7, fortnightly:14 };
+  const rec = ev.recurrence || "none";
   let matches;
-  if (ev.recurrence === "weekly") matches = diff % 7 === 0;
-  else if (ev.recurrence === "fortnightly") matches = diff % 14 === 0;
-  else matches = diff === 0;
-
+  if (DAY_INTERVALS[rec]) {
+    matches = diff % DAY_INTERVALS[rec] === 0;
+  } else if (rec === "monthly") {
+    matches = date.getDate() === anchor.getDate();
+  } else {
+    matches = diff === 0;
+  }
   if (!matches) return false;
 
   if (Array.isArray(ev.excludedDates) && ev.excludedDates.includes(dStr)) return false;
@@ -2423,8 +2427,15 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       </div>
       <div class="field" id="f-repeat-panel" style="${hasRepeat?"":"display:none;"}">
         <select id="f-recur">
-          <option value="weekly" ${draft.recurrence!=="fortnightly"?"selected":""}>${t("weekly")}</option>
+          <option value="daily" ${draft.recurrence==="daily"?"selected":""}>Daily</option>
+          <option value="every2days" ${draft.recurrence==="every2days"?"selected":""}>Every 2 days</option>
+          <option value="every3days" ${draft.recurrence==="every3days"?"selected":""}>Every 3 days</option>
+          <option value="every4days" ${draft.recurrence==="every4days"?"selected":""}>Every 4 days</option>
+          <option value="every5days" ${draft.recurrence==="every5days"?"selected":""}>Every 5 days</option>
+          <option value="every6days" ${draft.recurrence==="every6days"?"selected":""}>Every 6 days</option>
+          <option value="weekly" ${(!draft.recurrence||draft.recurrence==="weekly"||draft.recurrence==="none")?"selected":""}>${t("weekly")}</option>
           <option value="fortnightly" ${draft.recurrence==="fortnightly"?"selected":""}>${t("fortnightly")}</option>
+          <option value="monthly" ${draft.recurrence==="monthly"?"selected":""}>Monthly</option>
         </select>
       </div>
 
