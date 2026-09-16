@@ -20,7 +20,8 @@ import {
   doc,
   setDoc,
   getDoc,
-  onSnapshot
+  onSnapshot,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 import {
@@ -2610,12 +2611,21 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       return;
     }
 
+    const timeChanged = isEdit && isNotification && draft.dateISO === updated.dateISO && draft.start !== updated.start;
+
     if (isEdit) {
       events = events.map(e=> e.id===updated.id ? updated : e);
     } else {
       events.push(updated);
     }
     save(); overlay.remove();
+
+    if (timeChanged && currentUser) {
+      const key = `${updated.id}_${updated.dateISO}`;
+      deleteDoc(doc(db, "users", currentUser.uid, "notified", key)).catch(err => {
+        console.warn("Couldn't clear notified marker:", err.message);
+      });
+    }
     selectedDate = startOfDay(new Date(updated.dateISO));
     weekStart = startOfWeek(selectedDate);
     view = "day";
