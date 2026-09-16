@@ -546,7 +546,7 @@ button {
   overflow-y: auto;
   scroll-snap-type: y proximity;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: calc(34vh + 24px);
+  padding-bottom: calc(30vh + 84px + 24px);
 }
 
 .monthblock {
@@ -851,16 +851,16 @@ button {
 
 .month-day-panel {
   position: fixed;
-  left: 0; right: 0; bottom: 0;
-  max-height: 34vh;
+  left: 12px; right: 12px;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  max-height: 30vh;
   background: var(--surface);
-  border-top: 1px solid var(--line);
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -4px 14px rgba(0,0,0,0.12);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
   z-index: 30;
   display: flex;
   flex-direction: column;
-  padding-bottom: env(safe-area-inset-bottom);
+  overflow: hidden;
 }
 .month-day-panel-header {
   display: flex;
