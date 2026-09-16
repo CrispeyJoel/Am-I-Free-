@@ -541,19 +541,6 @@ button {
   background: var(--bg);
 }
 
-.month-free-bubble {
-  background: var(--free-bg);
-  color: var(--free-ink);
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 5px 10px;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-.month-free-bubble.busy {
-  background: #F4E8CF;
-  color: #665021;
-}
 .todaybtn.viewday-dark {
   background: #16232a;
   color: white;
@@ -1770,4 +1757,19 @@ button {
 .allday-chip .dollar {
   margin-left: auto;
   font-weight: 700;
+}
+
+
+.month-free-bubble {
+  background: var(--free-bg);
+  color: var(--free-ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.month-free-bubble.busy {
+  background: #F4E8CF;
+  color: #665021;
 }

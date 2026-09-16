@@ -2573,26 +2573,27 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
     overlay.querySelector("#f-notiftime-row").style.display = isNotif ? "" : "none";
     overlay.querySelector("#f-endtime-field").style.display = isNotif ? "none" : "";
     overlay.querySelector("#f-buffer-toggle-row").style.display = isNotif ? "none" : "";
-    overlay.querySelector("#f-bufferrow").style.display = "none";
-    overlay.querySelector("#f-buffer-toggle").checked = false;
     overlay.querySelector("#f-mandatoryrow").style.display = isNotif ? "none" : "";
     overlay.querySelector("#f-moneyrow").style.display = isNotif ? "none" : "";
     overlay.querySelector("#f-allday-row").style.display = isNotif ? "none" : "";
     overlay.querySelector("#f-category-field").style.display = isNotif ? "none" : "";
     overlay.querySelector("#f-reminder-toggle-row").style.display = isNotif ? "none" : "";
-    overlay.querySelector("#f-reminder-panel").style.display = "none";
-    overlay.querySelector("#f-reminder-toggle").checked = false;
+
     if (isNotif) {
+      // Notifications never use buffer/reminder — force off only in this mode.
+      overlay.querySelector("#f-bufferrow").style.display = "none";
+      overlay.querySelector("#f-buffer-toggle").checked = false;
+      overlay.querySelector("#f-reminder-panel").style.display = "none";
+      overlay.querySelector("#f-reminder-toggle").checked = false;
       overlay.querySelector("#f-allday").checked = false;
       overlay.querySelector("#f-timerow").style.display = "";
       overlay.querySelector("#f-allday-daterow").style.display = "none";
-    }
-
-    if (isNotif) {
       const timeOn = overlay.querySelector("#f-notiftime-toggle").checked;
       overlay.querySelector("#f-time-field").style.display = timeOn ? "" : "none";
       overlay.querySelector("#f-notiftime-hint").style.display = timeOn ? "none" : "";
     } else {
+      // Leave Buffer/Reminder toggle + panel exactly as initialized from the
+      // event's actual saved data — don't reset them here.
       overlay.querySelector("#f-time-field").style.display = "";
       overlay.querySelector("#f-notiftime-hint").style.display = "none";
     }
