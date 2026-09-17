@@ -1097,14 +1097,14 @@ function attachTimelineDragHandlers(daycolEl, date) {
     const draft = {
       id: uid(), seriesId: uid(),
       title: "",
-      categoryId: categories[0].id,
+      categoryId: "",
       dateISO: iso(finalDate),
       allDay: false,
       start: finalStart,
       duration: Math.max(30, finalEnd - finalStart),
       bufferBefore: 0,
       bufferAfter: 0,
-      reminder: "30m",
+      reminder: "none",
       mandatory: true,
       earnsMoney: false,
       recurrence: "none"
@@ -1411,7 +1411,7 @@ function findMatchingEvent(matchTitle, matchDateISO, matchTime) {
   if (!title) return null;
   const searchDate = matchDateISO ? dateFromISO(matchDateISO) : new Date();
   let candidates = [];
-  for (let offset = -1; offset <= 14; offset++) {
+  for (let offset = -7; offset <= 400; offset++) {
     const d = addDays(searchDate, offset);
     candidates = candidates.concat(eventsOnDate(d).map(e => ({ ev: e, date: d })));
   }
@@ -1630,7 +1630,14 @@ function executeChatAction(action) {
     const [hh, mm] = (args.newTime || "12:00").split(":").map(Number);
     const newStart = isNaN(hh) ? match.ev.start : hh * 60 + (isNaN(mm) ? 0 : mm);
     const newDateISO = args.newDate || match.ev.dateISO;
+
     const updated = { ...match.ev, dateISO: newDateISO, start: newStart };
+
+    if (match.ev.allDay && match.ev.endDateISO) {
+      const spanDays = dayDiff(dateFromISO(match.ev.endDateISO), dateFromISO(match.ev.dateISO));
+      updated.endDateISO = iso(addDays(dateFromISO(newDateISO), spanDays));
+    }
+
     events = events.map(e => e.id === updated.id ? updated : e);
     save(); render();
     return `Moved ${updated.title} to ${formatDateReadable(newDateISO)}, ${minToLabel(newStart)}.`;
@@ -1945,10 +1952,12 @@ function refreshSettingsPanel() {
 
 
 function openCategoryManager(onDone) {
+  let draftCats = categories.map(c => ({ ...c }));
+
   const overlay = document.createElement("div");
   overlay.className = "overlay";
 
-  const rowsHtml = () => categories.map((c, i) => `
+  const rowsHtml = () => draftCats.map((c, i) => `
     <div class="catrow" data-idx="${i}">
       <input type="color" class="catcolor" value="${c.color}" />
       <input type="text" class="catname" value="${escapeHtml(c.name)}" />
@@ -1970,12 +1979,22 @@ function openCategoryManager(onDone) {
 
   document.body.appendChild(overlay);
 
+  function syncFieldsIntoDraft() {
+    overlay.querySelectorAll(".catrow").forEach(row => {
+      const idx = parseInt(row.dataset.idx, 10);
+      if (!draftCats[idx]) return;
+      draftCats[idx].name = row.querySelector(".catname").value.trim() || draftCats[idx].name;
+      draftCats[idx].color = row.querySelector(".catcolor").value;
+    });
+  }
+
   function attachRowHandlers() {
     overlay.querySelectorAll(".catdelete").forEach(btn => {
       btn.addEventListener("click", () => {
-        if (categories.length <= 1) { alert("You need at least one category."); return; }
+        if (draftCats.length <= 1) { alert("You need at least one category."); return; }
+        syncFieldsIntoDraft();
         const idx = parseInt(btn.closest(".catrow").dataset.idx, 10);
-        categories.splice(idx, 1);
+        draftCats.splice(idx, 1);
         overlay.querySelector("#catList").innerHTML = rowsHtml();
         attachRowHandlers();
       });
@@ -1987,20 +2006,15 @@ function openCategoryManager(onDone) {
   overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
 
   overlay.querySelector("#catAddNew").addEventListener("click", () => {
-    categories.push({ id: uid(), name: "New category", color: "#7C5CBF", earnsDefault: false });
+    syncFieldsIntoDraft();
+    draftCats.push({ id: uid(), name: "New category", color: "#7C5CBF", earnsDefault: false });
     overlay.querySelector("#catList").innerHTML = rowsHtml();
     attachRowHandlers();
   });
 
   overlay.querySelector("#catSaveAll").addEventListener("click", () => {
-    const updated = [];
-    overlay.querySelectorAll(".catrow").forEach(row => {
-      const idx = parseInt(row.dataset.idx, 10);
-      const name = row.querySelector(".catname").value.trim() || categories[idx].name;
-      const color = row.querySelector(".catcolor").value;
-      updated.push({ ...categories[idx], name, color });
-    });
-    categories = updated;
+    syncFieldsIntoDraft();
+    categories = draftCats;
     save();
     overlay.remove();
     if (onDone) onDone();
