@@ -3288,3 +3288,11 @@ async function handleAuthChange(user) {
 onAuthStateChanged(auth, handleAuthChange);
 setupDelegatedHandlers();
 render();
+
+const splash = document.getElementById("splashScreen");
+if (splash) {
+  setTimeout(() => {
+    splash.classList.add("hidden");
+    setTimeout(() => splash.remove(), 400);
+  }, 300);
+}
