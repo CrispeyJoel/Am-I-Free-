@@ -2218,13 +2218,33 @@ function openDeleteChoice(draft, parentOverlay, targetDateISO) {
   });
 
   overlay.querySelector("#delAll").addEventListener("click", () => {
-    const deletedEvent = events.find(e => e.id === draft.id);
-    events = events.filter(e => e.id !== draft.id);
-    save();
-    overlay.remove();
-    parentOverlay?.remove();
-    render();
-    if (deletedEvent) showUndoSnackbar(`Deleted "${deletedEvent.title}" (entire series)`, () => { events.push(deletedEvent); save(); render(); });
+    const ev = events.find(e => e.id === draft.id);
+    if (!ev) { overlay.remove(); parentOverlay?.remove(); return; }
+
+    if (targetDateISO > ev.dateISO) {
+      // Occurrences before targetDateISO already happened — keep them.
+      // Just cap the series so it stops repeating from this date onward.
+      const prevSeriesEnd = ev.seriesEndISO || null;
+      ev.seriesEndISO = targetDateISO;
+      save();
+      overlay.remove();
+      parentOverlay?.remove();
+      render();
+      showUndoSnackbar(`Stopped "${ev.title}" repeating from ${targetDateISO}`, () => {
+        ev.seriesEndISO = prevSeriesEnd;
+        save();
+        render();
+      });
+    } else {
+      // targetDateISO is the very first occurrence — there's no valid past to keep.
+      const deletedEvent = ev;
+      events = events.filter(e => e.id !== draft.id);
+      save();
+      overlay.remove();
+      parentOverlay?.remove();
+      render();
+      showUndoSnackbar(`Deleted "${deletedEvent.title}" (entire series)`, () => { events.push(deletedEvent); save(); render(); });
+    }
   });
 }
 
