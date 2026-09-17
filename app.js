@@ -729,27 +729,34 @@ function renderMonthBlock(monthDate) {
 
 function renderMonthDayPanel(date) {
   const dStr = iso(date);
-  const evs = eventsOnDate(date).sort((a, b) => {
+  const allEvs = eventsOnDate(date).sort((a, b) => {
     if (a.allDay && !b.allDay) return -1;
     if (!a.allDay && b.allDay) return 1;
     return a.start - b.start;
   });
+  const timedEvs = allEvs.filter(ev => ev.kind !== "notification");
+  const notifEvs = allEvs.filter(ev => ev.kind === "notification");
 
-  const rowsHtml = evs.length
-    ? evs.map(ev => {
-        const cat = categoryOf(ev.categoryId);
-        const timeLabel = ev.allDay
-          ? (ev.endDateISO && ev.endDateISO !== ev.dateISO ? `${ev.dateISO} – ${ev.endDateISO}` : t("allDay"))
-          : `${minToLabel(ev.start)} – ${minToLabel(ev.start + ev.duration)}`;
-        return `<div class="agenda-row" data-id="${ev.id}">
-          <span class="agenda-dot" style="background:${cat.color}"></span>
-          <div class="agenda-info">
-            <div class="agenda-title">${escapeHtml(ev.title)}</div>
-            <div class="agenda-time">${timeLabel} · ${cat.name}</div>
-          </div>
-          <button type="button" class="agenda-delete" data-id="${ev.id}" title="Delete">✕</button>
-        </div>`;
-      }).join("")
+  function rowHtml(ev) {
+    const cat = categoryOf(ev.categoryId);
+    const isNotifRow = ev.kind === "notification";
+    const timeLabel = ev.allDay
+      ? (ev.endDateISO && ev.endDateISO !== ev.dateISO ? `${ev.dateISO} – ${ev.endDateISO}` : t("allDay"))
+      : isNotifRow
+        ? (ev.start > 0 ? minToLabel(ev.start) : "Start of day")
+        : `${minToLabel(ev.start)} – ${minToLabel(ev.start + ev.duration)}`;
+    return `<div class="agenda-row" data-id="${ev.id}">
+      <span class="agenda-dot" style="background:${cat.color}"></span>
+      <div class="agenda-info">
+        <div class="agenda-title">${escapeHtml(ev.title)}</div>
+        <div class="agenda-time">${timeLabel} · ${cat.name}</div>
+      </div>
+      <button type="button" class="agenda-delete" data-id="${ev.id}" title="Delete">✕</button>
+    </div>`;
+  }
+
+  const rowsHtml = allEvs.length
+    ? `${timedEvs.length ? `<div class="agenda-section-label">Events</div>${timedEvs.map(rowHtml).join("")}` : ""}${notifEvs.length ? `<div class="agenda-section-label">Reminders</div>${notifEvs.map(rowHtml).join("")}` : ""}`
     : `<div style="padding:14px 0; text-align:center; color:var(--ink-soft); font-size:0.85rem;">No events on this day.</div>`;
 
   return `<div id="monthDayPanel" class="month-day-panel" data-date="${dStr}">
@@ -2050,31 +2057,38 @@ function openHelpSheet() {
 
 function openDayAgenda(date) {
   const dStr = iso(date);
-  const evs = eventsOnDate(date).sort((a, b) => {
+  const allEvs = eventsOnDate(date).sort((a, b) => {
     if (a.allDay && !b.allDay) return -1;
     if (!a.allDay && b.allDay) return 1;
     return a.start - b.start;
   });
+  const timedEvs = allEvs.filter(ev => ev.kind !== "notification");
+  const notifEvs = allEvs.filter(ev => ev.kind === "notification");
 
   const overlay = document.createElement("div");
   overlay.className = "overlay";
   overlay.id = "agendaOverlay";
 
-  const rowsHtml = () => evs.length
-    ? evs.map(ev => {
-        const cat = categoryOf(ev.categoryId);
-        const timeLabel = ev.allDay
-          ? (ev.endDateISO && ev.endDateISO !== ev.dateISO ? `${ev.dateISO} – ${ev.endDateISO}` : t("allDay"))
-          : `${minToLabel(ev.start)} – ${minToLabel(ev.start + ev.duration)}`;
-        return `<div class="agenda-row" data-id="${ev.id}">
-          <span class="agenda-dot" style="background:${cat.color}"></span>
-          <div class="agenda-info">
-            <div class="agenda-title">${escapeHtml(ev.title)}</div>
-            <div class="agenda-time">${timeLabel} · ${cat.name}</div>
-          </div>
-          <button type="button" class="agenda-delete" data-id="${ev.id}" title="Delete">✕</button>
-        </div>`;
-      }).join("")
+  function rowHtml(ev) {
+    const cat = categoryOf(ev.categoryId);
+    const isNotifRow = ev.kind === "notification";
+    const timeLabel = ev.allDay
+      ? (ev.endDateISO && ev.endDateISO !== ev.dateISO ? `${ev.dateISO} – ${ev.endDateISO}` : t("allDay"))
+      : isNotifRow
+        ? (ev.start > 0 ? minToLabel(ev.start) : "Start of day")
+        : `${minToLabel(ev.start)} – ${minToLabel(ev.start + ev.duration)}`;
+    return `<div class="agenda-row" data-id="${ev.id}">
+      <span class="agenda-dot" style="background:${cat.color}"></span>
+      <div class="agenda-info">
+        <div class="agenda-title">${escapeHtml(ev.title)}</div>
+        <div class="agenda-time">${timeLabel} · ${cat.name}</div>
+      </div>
+      <button type="button" class="agenda-delete" data-id="${ev.id}" title="Delete">✕</button>
+    </div>`;
+  }
+
+  const rowsHtml = () => allEvs.length
+    ? `${timedEvs.length ? `<div class="agenda-section-label">Events</div>${timedEvs.map(rowHtml).join("")}` : ""}${notifEvs.length ? `<div class="agenda-section-label">Reminders</div>${notifEvs.map(rowHtml).join("")}` : ""}`
     : `<div style="padding:20px 0; text-align:center; color:var(--ink-soft); font-size:0.85rem;">No events on this day.</div>`;
 
   overlay.innerHTML = `
@@ -2101,12 +2115,10 @@ function openDayAgenda(date) {
           openDeleteChoice(ev, overlay, dStr);
         } else {
           if (!confirm(`Delete "${ev.title}"?`)) return;
-          const deletedEvent = ev;
           events = events.filter(x => x.id !== ev.id);
           save();
           overlay.remove();
           render();
-          showUndoSnackbar(`Deleted "${deletedEvent.title}"`, () => { events.push(deletedEvent); save(); render(); });
         }
       });
     });
@@ -2629,7 +2641,6 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
     overlay.querySelector("#f-mandatoryrow").style.display = isNotif ? "none" : "";
     overlay.querySelector("#f-moneyrow").style.display = isNotif ? "none" : "";
     overlay.querySelector("#f-allday-row").style.display = isNotif ? "none" : "";
-    overlay.querySelector("#f-category-field").style.display = isNotif ? "none" : "";
     overlay.querySelector("#f-reminder-toggle-row").style.display = isNotif ? "none" : "";
 
     if (isNotif) {
@@ -2761,7 +2772,7 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
       allDay: isNotification ? false : isAllDay,
       start: startMin,
       duration: duration,
-      categoryId: isNotification ? "none" : chosenCat,
+      categoryId: chosenCat,
       bufferBefore: bufferBefore,
       bufferAfter: bufferAfter,
       recurrence: repeatOn ? overlay.querySelector("#f-recur").value : "none",

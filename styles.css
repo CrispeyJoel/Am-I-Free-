@@ -1776,3 +1776,15 @@ button {
   background: #F4E8CF;
   color: #665021;
 }
+
+.agenda-section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  padding: 10px 0 4px;
+}
+.agenda-section-label:first-child {
+  padding-top: 0;
+}
