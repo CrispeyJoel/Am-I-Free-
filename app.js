@@ -222,7 +222,7 @@ function dateFromISO(dateStr) {
   return new Date(y, m - 1, d);
 }
 
-const RECUR_DAY_MAP = { daily:1, every2days:2, every3days:3, every4days:4, every5days:5, every6days:6, weekly:7, fortnightly:14, monthly:30 };
+const RECUR_DAY_MAP = { daily:1, every2days:2, every3days:3, every4days:4, every5days:5, every6days:6, weekly:7, fortnightly:14, monthly:30, yearly:365 };
 
 function getRecurrenceDays(ev) {
   if (Number.isFinite(ev.recurrenceDays)) return ev.recurrenceDays;
@@ -249,6 +249,8 @@ function occursOn(ev, date) {
     matches = diff % DAY_INTERVALS[rec] === 0;
   } else if (rec === "monthly") {
     matches = date.getDate() === anchor.getDate();
+  } else if (rec === "yearly") {
+    matches = date.getDate() === anchor.getDate() && date.getMonth() === anchor.getMonth();
   } else {
     matches = diff === 0;
   }
@@ -2621,6 +2623,7 @@ function openSheet(ev, isNew=false, occurrenceDateISO=null) {
           <option value="weekly" ${(!draft.recurrence||draft.recurrence==="weekly"||draft.recurrence==="none")?"selected":""}>${t("weekly")}</option>
           <option value="fortnightly" ${draft.recurrence==="fortnightly"?"selected":""}>${t("fortnightly")}</option>
           <option value="monthly" ${draft.recurrence==="monthly"?"selected":""}>Monthly</option>
+          <option value="yearly" ${draft.recurrence==="yearly"?"selected":""}>Yearly</option>
         </select>
       </div>
 

@@ -47,6 +47,8 @@ function occursOn(ev, dateStr) {
     matches = diff % DAY_INTERVALS[rec] === 0;
   } else if (rec === "monthly") {
     matches = target.day === anchor.day;
+  } else if (rec === "yearly") {
+    matches = target.day === anchor.day && target.month === anchor.month;
   } else {
     matches = diff === 0;
   }
